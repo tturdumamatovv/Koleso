@@ -1,0 +1,245 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+  <!-- Основной контейнер для чата -->
+  <div style="display: flex; height: 90vh; border: 1px solid #ccc; border-radius: 10px; overflow: hidden;">
+
+    <!-- Левая колонка со списком пользователей -->
+    <div id="user-list" style="width: 30%; background-color: #2b2b2b; padding: 10px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
+      {% for user in users %}
+        <div class="user-item" data-user-id="{{ user.id }}" data-user-name="{{ user.full_name|default:user.phone_number }}" style="padding: 15px; margin-bottom: 5px; background-color: #3b3b3b; color: white; border-radius: 8px; cursor: pointer;">
+          <div>{{ user.full_name|default:user.phone_number }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Правая колонка с чатом -->
+    <div id="chat-box-container" style="flex-grow: 1; padding: 10px; background-color: #1e1e1e; color: #fff; border-left: 1px solid #444; display: flex; flex-direction: column;">
+
+      <!-- Здесь будет отображаться имя пользователя или номер телефона -->
+      <div id="chat-user-header" style="padding: 10px; background-color: #2b2b2b; color: #fff; font-weight: bold; margin-bottom: 10px; border-radius: 8px; text-align: center;">
+        Выберите пользователя
+      </div>
+
+      <!-- Чат -->
+      <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background-color: #2b2b2b; padding: 10px; border-radius: 10px; border: 1px solid #444; scrollbar-width: none; -ms-overflow-style: none;"></div>
+
+      <!-- Ввод сообщения -->
+      <div class="message-input" style="display: flex; align-items: center; margin-top: 10px;">
+        <textarea id="message-box" placeholder="Напишите сообщение..." style="width: 100%; height: 50px; margin-right: 10px; border-radius: 5px; border: 1px solid #444; padding: 10px; background-color: #3b3b3b; color: white; resize: none;"></textarea>
+        <button id="send-button" style="height: 50px; background-color: #0066cc; color: white; border: none; padding: 0 20px; border-radius: 5px; cursor: pointer;">Отправить</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Подключение Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+
+  <script>
+    // Инициализация Firebase
+    var firebaseConfig = {
+      apiKey: "AIzaSyBqsNaYF7zyMBQfRmaCkim7juLnuNyuXm4",
+      authDomain: "koleso-1bdb1.firebaseapp.com",
+      databaseURL: "https://koleso-1bdb1-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "koleso-1bdb1",
+      storageBucket: "koleso-1bdb1.appspot.com",
+      messagingSenderId: "255748163595",
+      appId: "1:255748163595:web:8d9bd89a3340e29d1b1f0e",
+      measurementId: "G-B3L22NX8DB"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+
+    var selectedUserId = null;  // Текущий выбранный пользователь
+    var adminId = {{ admin_id }};  // ID администратора
+    var selectedChatId = null;  // ID текущего чата
+
+    // Подписка на все чаты при загрузке страницы
+    subscribeToAllChats();
+
+    function subscribeToAllChats() {
+      console.log("Подписка на все чаты");
+
+      let userIds = [{% for user in users %} {{ user.id }}, {% endfor %}];  // Массив всех ID пользователей
+
+      userIds.forEach(function(userId) {
+        fetchChatId(userId).then(function(chatId) {
+          if (chatId) {
+            subscribeToChat(chatId, userId);  // Подписываемся на каждый чат
+          }
+        });
+      });
+    }
+
+    // Логика выбора пользователя
+    document.querySelectorAll('.user-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.user-item').forEach(function(user) {
+          user.style.backgroundColor = '#3b3b3b';  // Сбрасываем цвет
+        });
+        this.style.backgroundColor = '#0066cc';  // Устанавливаем цвет выбранного пользователя
+        selectedUserId = Number(this.getAttribute('data-user-id'));  // Получаем ID пользователя
+
+        // Изменяем заголовок чата на имя или номер пользователя
+        var userNameOrPhone = this.getAttribute('data-user-name');
+        document.getElementById('chat-user-header').innerText = userNameOrPhone;
+
+        loadMessages(selectedUserId);  // Загружаем сообщения выбранного пользователя
+      });
+    });
+
+    // Функция загрузки сообщений
+    function loadMessages(userId) {
+      fetchChatId(userId).then(function(chatId) {
+        if (chatId) {
+          selectedChatId = chatId;
+          subscribeToChat(chatId, userId);
+        } else {
+          selectedChatId = null;
+          document.getElementById('chat-box').innerHTML = 'Нет сообщений. Начните новый чат.';
+        }
+      });
+    }
+
+    // Функция проверки, существует ли чат
+    function fetchChatId(userId) {
+      return fetch(`/api/v2/chat/get-chat-id/?user_id=${userId}&admin_id=${adminId}`)
+        .then(response => response.json())
+        .then(data => {
+          return data.chat_id || null;  // Возвращаем chat_id или null
+        });
+    }
+
+    // Подписка на сообщения в реальном времени для конкретного чата
+    function subscribeToChat(chatId, userId) {
+      if (!chatId) return;
+
+      chatId = chatId.toString();  // Преобразуем chatId в строку, если это число
+
+      console.log("Подписываемся на чат с chat_id:", chatId);
+
+      db.collection('chats').doc(chatId).collection('messages')
+        .orderBy('timestamp')  // Firestore автоматически сортирует по временной метке
+        .onSnapshot(function(querySnapshot) {
+          let messages = [];  // Храним все сообщения в массиве
+
+          querySnapshot.forEach(function(doc) {
+            var messageData = doc.data();
+            messages.push(messageData);  // Добавляем каждое сообщение в массив
+          });
+
+          if (userId === selectedUserId) {
+            document.getElementById('chat-box').innerHTML = '';  // Очищаем чат перед отображением сообщений
+            messages.forEach(messageData => displayMessage(messageData));  // Отображаем каждое сообщение
+
+            // Прокрутка чата вниз после загрузки всех сообщений
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+          }
+        }, function(error) {
+          console.error("Ошибка подписки на чат с chat_id:", chatId, "Ошибка:", error);
+        });
+    }
+
+    // Отображение сообщения в чате
+    function displayMessage(messageData) {
+      var chatBox = document.getElementById('chat-box');
+      var senderId = messageData.sender_id;
+
+      // Преобразуем временную метку в корректный формат
+      var timestamp = messageData.timestamp;
+      if (typeof timestamp === 'object' && timestamp.seconds) {
+        var date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+        timestamp = date.toLocaleString();  // Преобразуем в читаемый формат
+      } else if (typeof timestamp === 'string') {
+        var date = new Date(timestamp);
+        timestamp = date.toLocaleString();  // Преобразуем в читаемый формат
+      }
+
+      // Создание элемента сообщения
+      var messageCover = document.createElement('div');
+      messageCover.style.display = "flex";
+      messageCover.style.flexDirection = "row";
+      messageCover.style.width = "100%";
+      messageCover.classList.add('cover');
+
+      var messageElement = document.createElement('div');
+      messageElement.style.padding = '10px';
+      messageElement.style.borderRadius = '8px';
+      messageElement.style.width = 'fit-content';
+      messageElement.style.color = '#fff';
+      messageCover.appendChild(messageElement);
+
+      // Админ справа (синий), пользователь слева (серый)
+      if (senderId === adminId) {
+        messageElement.style.backgroundColor = "#0066cc";  // Синий для админа
+        messageCover.style.justifyContent = 'flex-end';  // Сообщения админа справа
+      } else {
+        messageElement.style.backgroundColor = "#3b3b3b";  // Серый для пользователя
+        messageCover.style.justifyContent = 'flex-start';  // Сообщения пользователя слева
+      }
+
+      messageElement.innerHTML = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content} <br> <small>${timestamp}</small>`;
+      chatBox.appendChild(messageCover);
+    }
+
+    // Отправка сообщения
+    document.getElementById('send-button').addEventListener('click', function() {
+      var messageContent = document.getElementById('message-box').value;
+
+      if (!messageContent || !selectedUserId) {
+        alert('Выберите пользователя и введите сообщение.');
+        return;
+      }
+
+      sendMessageToExistingChat(selectedChatId, messageContent);  // Отправляем сообщение в существующий чат
+
+      document.getElementById('message-box').value = "";  // Очищаем поле ввода
+    });
+
+    // Отправка сообщения в существующий чат
+    function sendMessageToExistingChat(chatId, messageContent) {
+      if (typeof chatId !== 'string') {
+        chatId = chatId.toString();  // Преобразуем chatId в строку, если это число
+      }
+
+      let adminName = 'Admin';  // Имя администратора
+
+      db.collection('chats').doc(chatId).collection('messages').add({
+        sender_id: adminId,  // ID отправителя (админ)
+        sender_full_name: adminName,  // Имя отправителя
+        recipient_id: selectedUserId,  // ID получателя (пользователь)
+        content: messageContent,
+        timestamp: new Date()  // Временная метка
+      }).then(() => {
+        console.log("Сообщение отправлено. Время отправки:", new Date());
+      }).catch((error) => {
+        console.error("Ошибка при отправке сообщения:", error);
+      });
+    }
+  </script>
+
+  <!-- Стили -->
+  <style>
+    #user-list::-webkit-scrollbar,
+    #chat-box::-webkit-scrollbar {
+      display: none;  /* Скрыть полосы прокрутки */
+    }
+    #user-list, #chat-box {
+      scrollbar-width: none;  /* Firefox */
+    }
+    textarea#message-box {
+      resize: none;  /* Убираем возможность изменения размера текстового поля */
+      scrollbar-width: none;
+    }
+
+    #chat-box {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  </style>
+
+{% endblock %}

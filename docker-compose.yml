@@ -1,0 +1,15 @@
+version: "3.10"
+
+services:
+
+  app:
+    image: tturdumamatov/ga_service:latest
+    volumes:
+      - ./static:/app/static
+      - ./media:/app/media
+    ports:
+    - "8002:8002"
+    command: bash -c "python manage.py collectstatic --no-input && python manage.py migrate && gunicorn config.wsgi:application -w 4 -b 0.0.0.0:8002"
+    env_file:
+      - .env
+    restart: always
