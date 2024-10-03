@@ -26,6 +26,7 @@ class SendMessageView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         content = self.request.data.get('content')
+        image = self.request.FILES.get('image')
 
         # Get the admin and the current user (either admin or normal user)
         admin = User.objects.filter(is_superuser=True).first()  # Admin
@@ -43,7 +44,7 @@ class SendMessageView(generics.CreateAPIView):
             chat = Chat.objects.create(user=recipient, admin=admin)
 
         # Create and save the message
-        message = serializer.save(chat=chat, sender=user, recipient=recipient, content=content)
+        message = serializer.save(chat=chat, sender=user, recipient=recipient, content=content, image=image)
 
         # Send message to Firebase
         self.send_message_to_firebase(chat, message)
@@ -63,6 +64,7 @@ class SendMessageView(generics.CreateAPIView):
             'sender_id': message.sender.id,
             'recipient_id': message.recipient.id,
             'content': message.content,
+            'image_url': message.image.url if message.image else None,
             'timestamp': message.timestamp
         }
 

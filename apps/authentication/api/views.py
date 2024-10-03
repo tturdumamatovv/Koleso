@@ -241,9 +241,14 @@ class CourierCollectorLoginView(generics.CreateAPIView):
 
         # Генерация токенов JWT
         refresh = RefreshToken.for_user(user)
+
+        # Определение, является ли пользователь курьером или сборщиком
+        is_courier = user.role == 'delivery'  # Если роль курьер, то возвращаем True, иначе False
+
         return Response({
             'access_token': str(refresh.access_token),
             'refresh_token': str(refresh),
+            'is_courier': is_courier,  # True если курьер, False если сборщик
         }, status=status.HTTP_200_OK)
 
 

@@ -26,9 +26,10 @@ from .serializers import (
     OrderPreviewSerializer,
     ReportSerializer,
     RestaurantSerializer,
-    OrderListSerializer
+    OrderListSerializer,
+    OrderDeliverySerializer
 )
-from ..permissions import IsCourier, IsCollector
+from ..permissions import IsCollector
 
 
 class ListOrderView(generics.ListAPIView):
@@ -313,7 +314,7 @@ class CollectorOrderUpdateView(generics.UpdateAPIView):
 
 class CourierOrderReadyListView(generics.ListAPIView):
     serializer_class = OrderListSerializer
-    permission_classes = [IsCourier]  # Только для курьеров
+    permission_classes = [IsCollector]  # Только для курьеров
 
     def get_queryset(self):
         # Фильтруем заказы со статусом "Готово"
@@ -322,17 +323,61 @@ class CourierOrderReadyListView(generics.ListAPIView):
 
 class CourierPickOrderView(generics.UpdateAPIView):
     serializer_class = OrderListSerializer
-    permission_classes = [IsCourier]
+    permission_classes = [IsCollector]
 
     def patch(self, request, *args, **kwargs):
         order_id = kwargs.get('pk')
+        user = request.user
         try:
             order = Order.objects.get(pk=order_id)
             if order.order_status == 'ready':
-                order.order_status = 'in_progress'  # Изменяем статус на "В процессе"
+                order.order_status = 'delivery'  # Изменяем статус на "В процессе"
+                order.courier = user
                 order.save()
                 return Response({'status': 'success', 'message': 'Заказ взят в обработку.'}, status=status.HTTP_200_OK)
             else:
                 return Response({'status': 'error', 'message': 'Невозможно взять заказ, который не готов.'}, status=status.HTTP_400_BAD_REQUEST)
         except Order.DoesNotExist:
             return Response({'status': 'error', 'message': 'Заказ не найден.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CourierOrderDeliverListView(generics.ListAPIView):
+    serializer_class = OrderListSerializer
+    permission_classes = [IsCollector]  # Только для курьеров
+
+    def get_queryset(self):
+        # Фильтруем заказы со статусом "Готово"
+        return Order.objects.filter(order_status='delivery')
+
+
+class CourierCompleteOrderView(generics.UpdateAPIView):
+    serializer_class = OrderDeliverySerializer
+    permission_classes = [IsCollector]  # Только для курьеров
+
+    def patch(self, request, *args, **kwargs):
+        order_id = kwargs.get('pk')
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            order = Order.objects.get(pk=order_id)
+            if order.order_status == 'delivery':  # Только если заказ в пути
+                order.order_status = 'completed'  # Меняем статус на завершен
+                order.delivery_photo = serializer.validated_data.get('delivery_photo')
+                order.delivery_comment = serializer.validated_data.get('delivery_comment')
+                order.save()
+                return Response({'status': 'success', 'message': 'Заказ успешно завершен.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'status': 'error', 'message': 'Невозможно завершить заказ, который не в пути.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Order.DoesNotExist:
+            return Response({'status': 'error', 'message': 'Заказ не найден.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class CourierOrderHistoryView(generics.ListAPIView):
+    serializer_class = OrderListSerializer
+    permission_classes = [IsCollector]
+
+    def get_queryset(self):
+        # Возвращаем только заказы, которые были взяты текущим курьером
+        return Order.objects.filter(courier=self.request.user).order_by('-order_time')
+

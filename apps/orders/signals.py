@@ -12,11 +12,14 @@ from apps.services.generate_message import format_order_status_change_message
 from apps.services.firebase_notification import send_firebase_notification
 from apps.authentication.models import User
 
+from decouple import config
+
+api_key=config('API_KEY')
 
 @receiver(pre_save, sender=Restaurant)
 def set_coordinates(sender, instance, **kwargs):
     if instance.address and (instance.latitude is None or instance.longitude is None):
-        latitude, longitude = get_coordinates(instance.address)
+        latitude, longitude = get_coordinates(instance.address, api_key)
         if latitude and longitude:
             instance.latitude = latitude
             instance.longitude = longitude
@@ -26,18 +29,28 @@ def set_coordinates(sender, instance, **kwargs):
 @receiver(pre_save, sender=Order)
 def check_status_change(sender, instance, **kwargs):
     if instance.pk:
+        # Получаем старую версию заказа для проверки изменений
         old_order = sender.objects.get(pk=instance.pk)
+
+        # Проверяем, изменился ли статус заказа на 'completed'
         if old_order.order_status != instance.order_status and instance.order_status == 'completed':
+            # Обновляем время доставки и последнее время заказа пользователя
             instance.delivery.delivery_time = datetime.now()
             instance.delivery.save()
+
             instance.user.last_order = datetime.now()
             instance.user.save()
+
+            # Применяем бонусные баллы
             apply_bonus_points(instance.user, instance.total_bonus_amount)
 
-        if instance.user.fcm_token:
+        # Проверяем, существует ли пользователь и есть ли у него FCM токен
+        if instance.user and instance.user.fcm_token:
             try:
-                body = format_order_status_change_message(instance.order_date, instance.id,
-                                                          instance.order_status)
+                # Формируем текст уведомления
+                body = format_order_status_change_message(instance.order_time, instance.id, instance.order_status)
+
+                # Отправляем уведомление через Firebase
                 send_firebase_notification(
                     token=instance.user.fcm_token,
                     title="Изменение статуса заказа",
@@ -45,6 +58,8 @@ def check_status_change(sender, instance, **kwargs):
                 )
             except Exception as e:
                 print(f"Ошибка при отправке уведомления: {e}")
+        else:
+            print(f"Пользователь {instance.user.id if instance.user else 'не указан'} не имеет FCM токена для отправки уведомлений.")
 
 
 @receiver(post_save, sender=Order)

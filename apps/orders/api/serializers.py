@@ -5,7 +5,7 @@ from django.conf import settings
 
 from rest_framework import serializers
 
-from apps.authentication.models import UserAddress
+from apps.authentication.models import UserAddress, User
 from apps.orders.models import (
     Order,
     OrderItem,
@@ -50,6 +50,7 @@ class ProductOrderItemSerializer(serializers.ModelSerializer):
             photo_url = request.build_absolute_uri(photo_url)
         return {
             'name': obj.product_size.product.name,
+            'description': obj.product_size.product.description,
             'price': obj.product_size.get_price(),
             'image': photo_url
         }
@@ -76,6 +77,12 @@ class DeliverySerializer(serializers.ModelSerializer):
         fields = ['user_address_id']
 
 
+class UserSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['phone_number', 'full_name']
+
+
 class OrderListSerializer(serializers.ModelSerializer):
     order_items = ProductOrderItemSerializer(many=True, required=False)
     restaurant = RestaurantSerializer()
@@ -83,11 +90,12 @@ class OrderListSerializer(serializers.ModelSerializer):
     order_time = serializers.SerializerMethodField()
     user_address = serializers.SerializerMethodField()
     app_download_url = serializers.SerializerMethodField()
+    user = UserSummarySerializer()
 
     class Meta:
         model = Order
         fields = ['id', 'total_amount', 'order_time', 'restaurant', 'order_items', 'total_bonus_amount',
-                  'is_pickup', 'user_address', 'app_download_url', 'order_status']
+                  'is_pickup', 'user_address', 'app_download_url', 'order_status', 'user']
 
     def get_total_amount(self, obj):
         return obj.get_total_amount_2()
@@ -106,6 +114,15 @@ class OrderListSerializer(serializers.ModelSerializer):
         if not link:
             return None
         return link
+
+
+class OrderDeliverySerializer(serializers.ModelSerializer):
+    delivery_photo = serializers.ImageField(required=True)
+    delivery_comment = serializers.CharField(required=True)
+
+    class Meta:
+        model = Order
+        fields = ['delivery_photo', 'delivery_comment', 'order_status']
 
 
 class OrderSerializer(serializers.ModelSerializer):

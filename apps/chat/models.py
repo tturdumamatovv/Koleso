@@ -21,7 +21,8 @@ class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=_("Отправитель"), related_name='sent_messages')
     recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=_("Получатель"),
                                   related_name='received_messages')
-    content = models.TextField(verbose_name=_("Сообщение"))
+    content = models.TextField(verbose_name=_("Сообщение"), blank=True)
+    image = models.ImageField(upload_to='message_images/', null=True, blank=True, verbose_name=_("Изображение"))
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name=_("Дата отправки"))
 
     def __str__(self):

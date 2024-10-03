@@ -24,18 +24,30 @@
       <!-- Чат -->
       <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background-color: #2b2b2b; padding: 10px; border-radius: 10px; border: 1px solid #444; scrollbar-width: none; -ms-overflow-style: none;"></div>
 
-      <!-- Ввод сообщения -->
+      <!-- Ввод сообщения и загрузка изображения -->
       <div class="message-input" style="display: flex; align-items: center; margin-top: 10px;">
         <textarea id="message-box" placeholder="Напишите сообщение..." style="width: 100%; height: 50px; margin-right: 10px; border-radius: 5px; border: 1px solid #444; padding: 10px; background-color: #3b3b3b; color: white; resize: none;"></textarea>
+
+        <!-- Поле для загрузки изображения -->
+        <input type="file" id="image-upload" accept="image/*" style="margin-right: 10px;" />
+
         <button id="send-button" style="height: 50px; background-color: #0066cc; color: white; border: none; padding: 0 20px; border-radius: 5px; cursor: pointer;">Отправить</button>
       </div>
+    </div>
+
+    <!-- Модальное окно для изображения -->
+    <div id="image-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
+      <span id="close-modal" style="position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; cursor: pointer;">&times;</span>
+      <img id="modal-image" style="margin: auto; display: block; max-width: 80%; max-height: 80%;" />
     </div>
 
   </div>
 
   <!-- Подключение Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
 
   <script>
     // Инициализация Firebase
@@ -52,23 +64,23 @@
 
     firebase.initializeApp(firebaseConfig);
     var db = firebase.firestore();
+    var storage = firebase.storage();
 
-    var selectedUserId = null;  // Текущий выбранный пользователь
-    var adminId = {{ admin_id }};  // ID администратора
-    var selectedChatId = null;  // ID текущего чата
+    var selectedUserId = null;
+    var adminId = {{ admin_id }};
+    var selectedChatId = null;
 
     // Подписка на все чаты при загрузке страницы
     subscribeToAllChats();
 
     function subscribeToAllChats() {
       console.log("Подписка на все чаты");
-
-      let userIds = [{% for user in users %} {{ user.id }}, {% endfor %}];  // Массив всех ID пользователей
+      let userIds = [{% for user in users %} {{ user.id }}, {% endfor %}];
 
       userIds.forEach(function(userId) {
         fetchChatId(userId).then(function(chatId) {
           if (chatId) {
-            subscribeToChat(chatId, userId);  // Подписываемся на каждый чат
+            subscribeToChat(chatId, userId);
           }
         });
       });
@@ -78,16 +90,13 @@
     document.querySelectorAll('.user-item').forEach(function(item) {
       item.addEventListener('click', function() {
         document.querySelectorAll('.user-item').forEach(function(user) {
-          user.style.backgroundColor = '#3b3b3b';  // Сбрасываем цвет
+          user.style.backgroundColor = '#3b3b3b';
         });
-        this.style.backgroundColor = '#0066cc';  // Устанавливаем цвет выбранного пользователя
-        selectedUserId = Number(this.getAttribute('data-user-id'));  // Получаем ID пользователя
-
-        // Изменяем заголовок чата на имя или номер пользователя
+        this.style.backgroundColor = '#0066cc';
+        selectedUserId = Number(this.getAttribute('data-user-id'));
         var userNameOrPhone = this.getAttribute('data-user-name');
         document.getElementById('chat-user-header').innerText = userNameOrPhone;
-
-        loadMessages(selectedUserId);  // Загружаем сообщения выбранного пользователя
+        loadMessages(selectedUserId);
       });
     });
 
@@ -109,56 +118,33 @@
       return fetch(`/api/v2/chat/get-chat-id/?user_id=${userId}&admin_id=${adminId}`)
         .then(response => response.json())
         .then(data => {
-          return data.chat_id || null;  // Возвращаем chat_id или null
+          return data.chat_id || null;
         });
     }
 
     // Подписка на сообщения в реальном времени для конкретного чата
     function subscribeToChat(chatId, userId) {
       if (!chatId) return;
-
-      chatId = chatId.toString();  // Преобразуем chatId в строку, если это число
-
-      console.log("Подписываемся на чат с chat_id:", chatId);
-
+      chatId = chatId.toString();
       db.collection('chats').doc(chatId).collection('messages')
-        .orderBy('timestamp')  // Firestore автоматически сортирует по временной метке
+        .orderBy('timestamp')
         .onSnapshot(function(querySnapshot) {
-          let messages = [];  // Храним все сообщения в массиве
-
+          let messages = [];
           querySnapshot.forEach(function(doc) {
             var messageData = doc.data();
-            messages.push(messageData);  // Добавляем каждое сообщение в массив
+            messages.push(messageData);
           });
-
           if (userId === selectedUserId) {
-            document.getElementById('chat-box').innerHTML = '';  // Очищаем чат перед отображением сообщений
-            messages.forEach(messageData => displayMessage(messageData));  // Отображаем каждое сообщение
-
-            // Прокрутка чата вниз после загрузки всех сообщений
+            document.getElementById('chat-box').innerHTML = '';
+            messages.forEach(messageData => displayMessage(messageData));
             document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
           }
-        }, function(error) {
-          console.error("Ошибка подписки на чат с chat_id:", chatId, "Ошибка:", error);
         });
     }
 
     // Отображение сообщения в чате
     function displayMessage(messageData) {
       var chatBox = document.getElementById('chat-box');
-      var senderId = messageData.sender_id;
-
-      // Преобразуем временную метку в корректный формат
-      var timestamp = messageData.timestamp;
-      if (typeof timestamp === 'object' && timestamp.seconds) {
-        var date = new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
-        timestamp = date.toLocaleString();  // Преобразуем в читаемый формат
-      } else if (typeof timestamp === 'string') {
-        var date = new Date(timestamp);
-        timestamp = date.toLocaleString();  // Преобразуем в читаемый формат
-      }
-
-      // Создание элемента сообщения
       var messageCover = document.createElement('div');
       messageCover.style.display = "flex";
       messageCover.style.flexDirection = "row";
@@ -172,51 +158,124 @@
       messageElement.style.color = '#fff';
       messageCover.appendChild(messageElement);
 
-      // Админ справа (синий), пользователь слева (серый)
-      if (senderId === adminId) {
-        messageElement.style.backgroundColor = "#0066cc";  // Синий для админа
-        messageCover.style.justifyContent = 'flex-end';  // Сообщения админа справа
+      if (messageData.sender_id === adminId) {
+        messageElement.style.backgroundColor = "#0066cc";
+        messageCover.style.justifyContent = 'flex-end';
       } else {
-        messageElement.style.backgroundColor = "#3b3b3b";  // Серый для пользователя
-        messageCover.style.justifyContent = 'flex-start';  // Сообщения пользователя слева
+        messageElement.style.backgroundColor = "#3b3b3b";
+        messageCover.style.justifyContent = 'flex-start';
       }
 
-      messageElement.innerHTML = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content} <br> <small>${timestamp}</small>`;
+      var messageContent = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content || ''} <br> <small>${new Date(messageData.timestamp.seconds * 1000).toLocaleString()}</small>`;
+      if (messageData.image_url) {
+        messageContent += `<br><img src="${messageData.image_url}" alt="Image" class="chat-image" style="max-width: 200px; border-radius: 8px; margin-top: 10px; cursor: pointer;">`;
+      }
+
+      messageElement.innerHTML = messageContent;
       chatBox.appendChild(messageCover);
+
+      // Добавляем обработчик для открытия изображения в модальном окне
+      var chatImage = messageElement.querySelector('.chat-image');
+      if (chatImage) {
+        chatImage.addEventListener('click', function() {
+          openImageModal(messageData.image_url);
+        });
+      }
     }
+
+    // Открытие модального окна с изображением
+    function openImageModal(imageUrl) {
+      var modal = document.getElementById('image-modal');
+      var modalImage = document.getElementById('modal-image');
+      modalImage.src = imageUrl;
+      modal.style.display = "block";
+    }
+
+    // Закрытие модального окна
+    var closeModal = document.getElementById('close-modal');
+    closeModal.addEventListener('click', function() {
+      var modal = document.getElementById('image-modal');
+      modal.style.display = "none";
+    });
+
+    // Закрытие модального окна при клике вне изображения
+    window.addEventListener('click', function(event) {
+      var modal = document.getElementById('image-modal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    });
 
     // Отправка сообщения
     document.getElementById('send-button').addEventListener('click', function() {
       var messageContent = document.getElementById('message-box').value;
-
-      if (!messageContent || !selectedUserId) {
-        alert('Выберите пользователя и введите сообщение.');
+      var imageFile = document.getElementById('image-upload').files[0];
+      if (!messageContent && !imageFile) {
+        alert('Введите сообщение или выберите изображение.');
         return;
       }
-
-      sendMessageToExistingChat(selectedChatId, messageContent);  // Отправляем сообщение в существующий чат
-
-      document.getElementById('message-box').value = "";  // Очищаем поле ввода
+      if (!selectedUserId) {
+        alert('Выберите пользователя.');
+        return;
+      }
+      sendMessageToExistingChat(selectedChatId, messageContent, imageFile);
+      document.getElementById('message-box').value = "";
+      document.getElementById('image-upload').value = "";
     });
 
-    // Отправка сообщения в существующий чат
-    function sendMessageToExistingChat(chatId, messageContent) {
-      if (typeof chatId !== 'string') {
-        chatId = chatId.toString();  // Преобразуем chatId в строку, если это число
+    // Отправка сообщения в существующий чат с фото
+    function sendMessageToExistingChat(chatId, messageContent, imageFile) {
+      if (imageFile) {
+        uploadImageToFirestore(imageFile).then(imageUrl => {
+          sendMessage(chatId, messageContent, imageUrl);
+        }).catch(error => {
+          console.error("Ошибка загрузки изображения:", error);
+        });
+      } else {
+        sendMessage(chatId, messageContent, null);
       }
+    }
 
-      let adminName = 'Admin';  // Имя администратора
-
+    // Функция отправки сообщения в Firestore
+    function sendMessage(chatId, messageContent, imageUrl) {
       db.collection('chats').doc(chatId).collection('messages').add({
-        sender_id: adminId,  // ID отправителя (админ)
-        sender_full_name: adminName,  // Имя отправителя
-        recipient_id: selectedUserId,  // ID получателя (пользователь)
-        content: messageContent,
-        timestamp: new Date()  // Временная метка
+        sender_id: adminId,
+        sender_full_name: 'Admin',
+        recipient_id: selectedUserId,
+        content: messageContent || '',  // Убедитесь, что content — это строка
+        image_url: imageUrl || null,  // Убедитесь, что imageUrl корректно передан
+        timestamp: new Date()
       }).then(() => {
-        console.log("Сообщение отправлено. Время отправки:", new Date());
+        console.log("Сообщение отправлено.");
       }).catch((error) => {
         console.error("Ошибка при отправке сообщения:", error);
+      });
+    }
+
+    // Функция для загрузки изображения в Firebase Storage
+    function uploadImageToFirestore(imageFile) {
+      return new Promise((resolve, reject) => {
+        var storageRef = storage.ref().child('message_images/' + imageFile.name);
+        var uploadTask = storageRef.put(imageFile);
+        uploadTask.on('state_changed',
+          function(snapshot) {
+            var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log('Загрузка изображения: ' + progress + '% завершено');
+          },
+          function(error) {
+            console.error("Ошибка загрузки изображения:", error);
+            reject(error);
+          },
+          function() {
+            uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+              console.log("Изображение загружено. URL:", downloadURL);
+              resolve(downloadURL);
+            }).catch(function(error) {
+              console.error("Ошибка при получении URL изображения:", error);
+              reject(error);
+            });
+          }
+        );
       });
     }
   </script>
@@ -225,20 +284,47 @@
   <style>
     #user-list::-webkit-scrollbar,
     #chat-box::-webkit-scrollbar {
-      display: none;  /* Скрыть полосы прокрутки */
+      display: none;
     }
     #user-list, #chat-box {
-      scrollbar-width: none;  /* Firefox */
-    }
-    textarea#message-box {
-      resize: none;  /* Убираем возможность изменения размера текстового поля */
       scrollbar-width: none;
     }
-
+    textarea#message-box {
+      resize: none;
+      scrollbar-width: none;
+    }
     #chat-box {
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+    #image-modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+
+      /* Flexbox для идеального центрирования */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #modal-image {
+      max-width: 80%;
+      max-height: 80%;
+      object-fit: contain; /* Убедитесь, что изображение сохраняет свои пропорции */
+    }
+    #close-modal {
+      position: fixed;
+      top: 20px;
+      right: 35px;
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
     }
   </style>
 

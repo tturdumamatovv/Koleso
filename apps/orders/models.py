@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from geopy.distance import geodesic
 from django.core.validators import MinLengthValidator
 
-from apps.authentication.models import UserAddress
+from apps.authentication.models import UserAddress, User
 from apps.pages.models import SingletonModel
 from apps.product.models import ProductSize, Topping  # Set,Ingredient
 import random
@@ -122,7 +122,7 @@ class Order(models.Model):
             ('delivery', _('Доставка')),
             ('completed', _('Завершено')),
             ('cancelled', _('Отменено')),
-            ('ready', _('Готово'))
+            ('ready', _('Готово')),
         ],
         default='pending',
         verbose_name=_('Статус заказа')
@@ -140,7 +140,11 @@ class Order(models.Model):
     comment = models.TextField(verbose_name=_('Комментарий'), blank=True, null=True)
 
     promo_code = models.ForeignKey('PromoCode', on_delete=models.SET_NULL, null=True, blank=True)
-
+    delivery_photo = models.ImageField(upload_to='delivery_photos/', blank=True, null=True,
+                                       verbose_name=_('Фото доставки'))
+    delivery_comment = models.TextField(blank=True, null=True, verbose_name=_('Комментарий курьера'))
+    courier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='courier_orders', verbose_name=_('Курьер'))
     class Meta:
         verbose_name = _("Заказ")
         verbose_name_plural = _("Заказы")

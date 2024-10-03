@@ -8,7 +8,10 @@ from .views import (
     CollectorOrderListView,
     CollectorOrderUpdateView,
     CourierOrderReadyListView,
-    CourierPickOrderView
+    CourierPickOrderView,
+    CourierOrderDeliverListView,
+    CourierCompleteOrderView,
+    CourierOrderHistoryView
 )
 
 urlpatterns = [
@@ -21,4 +24,8 @@ urlpatterns = [
     path('collector/orders/<int:pk>/ready/', CollectorOrderUpdateView.as_view(), name='collector-order-ready'),
     path('courier/orders/ready/', CourierOrderReadyListView.as_view(), name='courier-orders-ready'),
     path('courier/orders/<int:pk>/pick/', CourierPickOrderView.as_view(), name='courier-pick-order'),
+    path('courier/order/delivery/', CourierOrderDeliverListView.as_view(), name='courier-order-delivery'),
+    path('courier/order/<int:pk>/complete/', CourierCompleteOrderView.as_view(), name='courier-complete-order'),
+    path('courier/orders/history/', CourierOrderHistoryView.as_view(), name='courier-order-history'),
 ]
+
