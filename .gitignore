@@ -284,6 +284,8 @@ db.sqlite3
 
 /postgres
 /assets/static
+static
+media
 
 
 # Backup files #
