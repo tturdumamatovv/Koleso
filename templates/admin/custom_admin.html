@@ -246,12 +246,12 @@
       });
 
       db.collection('chats').doc(chatId).collection('messages').add({
-          sender_id: adminId.toString(),
+          sender_id: adminId.toString(),  // Приводим к строке
           sender_full_name: 'Admin',
-          recipient_id: selectedUserId.toString(),
+          recipient_id: selectedUserId.toString(),  // Приводим к строке
           content: messageContent || '',
           image_url: imageUrl || null,
-          timestamp: new Date()
+          timestamp: new Date()  // Дата в правильном формате
       }).then(() => {
           console.log("Сообщение отправлено.");
       }).catch((error) => {
