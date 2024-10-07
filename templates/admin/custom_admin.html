@@ -238,17 +238,24 @@
 
     // Функция отправки сообщения в Firestore
     function sendMessage(chatId, messageContent, imageUrl) {
+      console.log("Отправка сообщения с данными:", {
+          sender_id: adminId,
+          recipient_id: selectedUserId,
+          content: messageContent,
+          image_url: imageUrl
+      });
+
       db.collection('chats').doc(chatId).collection('messages').add({
-        sender_id: adminId,
-        sender_full_name: 'Admin',
-        recipient_id: selectedUserId,
-        content: messageContent || '',  // Убедитесь, что content — это строка
-        image_url: imageUrl || null,  // Убедитесь, что imageUrl корректно передан
-        timestamp: new Date()
+          sender_id: adminId.toString(),
+          sender_full_name: 'Admin',
+          recipient_id: selectedUserId.toString(),
+          content: messageContent || '',
+          image_url: imageUrl || null,
+          timestamp: new Date()
       }).then(() => {
-        console.log("Сообщение отправлено.");
+          console.log("Сообщение отправлено.");
       }).catch((error) => {
-        console.error("Ошибка при отправке сообщения:", error);
+          console.error("Ошибка при отправке сообщения:", error);
       });
     }
 
