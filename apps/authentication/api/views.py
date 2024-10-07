@@ -113,7 +113,8 @@ class VerifyCodeView(generics.CreateAPIView):
         return Response({
             'access_token': access_token,
             'refresh_token': str(refresh),
-            'first_visit': user.first_visit
+            'first_visit': user.first_visit,
+            'user_id': user.id
         }, status=status.HTTP_200_OK)
 
 
