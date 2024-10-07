@@ -118,6 +118,7 @@
       return fetch(`/api/v2/chat/get-chat-id/?user_id=${userId}&admin_id=${adminId}`)
         .then(response => response.json())
         .then(data => {
+          console.log("Полученный chat_id:", data.chat_id); // Лог для проверки
           return data.chat_id || null;
         });
     }
@@ -125,7 +126,10 @@
     // Подписка на сообщения в реальном времени для конкретного чата
     function subscribeToChat(chatId, userId) {
       if (!chatId) return;
-      chatId = chatId.toString();
+      console.log("Подписка на чат с ID:", chatId);
+      console.log("Тип chatId:", typeof chatId);  // Добавьте этот лог
+
+      chatId = chatId.toString(); // Приводим к строке, если это необходимо
       db.collection('chats').doc(chatId).collection('messages')
         .orderBy('timestamp')
         .onSnapshot(function(querySnapshot) {
@@ -245,10 +249,21 @@
           image_url: imageUrl
       });
 
-      db.collection('chats').doc(chatId).collection('messages').add({
-          sender_id: adminId.toString(),  // Приводим к строке
+      // Приводим adminId и selectedUserId к строкам
+      const senderId = String(adminId);
+      const recipientId = String(selectedUserId);
+      const chatDocId = String(chatId);
+
+      // Проверяем типы данных перед отправкой
+      console.log("Типы данных:");
+      console.log("adminId:", typeof senderId, "значение:", senderId);
+      console.log("selectedUserId:", typeof recipientId, "значение:", recipientId);
+      console.log("chatId:", typeof chatDocId, "значение:", chatDocId);
+
+      db.collection('chats').doc(chatDocId).collection('messages').add({
+          sender_id: senderId,  // Приведение к строке
           sender_full_name: 'Admin',
-          recipient_id: selectedUserId.toString(),  // Приводим к строке
+          recipient_id: recipientId,  // Приведение к строке
           content: messageContent || '',
           image_url: imageUrl || null,
           timestamp: new Date()  // Дата в правильном формате
