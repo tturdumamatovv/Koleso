@@ -147,45 +147,49 @@
     }
 
     // Отображение сообщения в чате
-    function displayMessage(messageData) {
-      var chatBox = document.getElementById('chat-box');
-      var messageCover = document.createElement('div');
-      messageCover.style.display = "flex";
-      messageCover.style.flexDirection = "row";
-      messageCover.style.width = "100%";
-      messageCover.classList.add('cover');
+function displayMessage(messageData) {
+  var chatBox = document.getElementById('chat-box');
+  var messageCover = document.createElement('div');
+  messageCover.style.display = "flex";
+  messageCover.style.flexDirection = "row";
+  messageCover.style.width = "100%";
+  messageCover.classList.add('cover');
 
-      var messageElement = document.createElement('div');
-      messageElement.style.padding = '10px';
-      messageElement.style.borderRadius = '8px';
-      messageElement.style.width = 'fit-content';
-      messageElement.style.color = '#fff';
-      messageCover.appendChild(messageElement);
+  var messageElement = document.createElement('div');
+  messageElement.style.padding = '10px';
+  messageElement.style.borderRadius = '8px';
+  messageElement.style.width = 'fit-content';
+  messageElement.style.color = '#fff';
+  messageCover.appendChild(messageElement);
 
-      if (messageData.sender_id === adminId) {
-        messageElement.style.backgroundColor = "#0066cc";
-        messageCover.style.justifyContent = 'flex-end';
-      } else {
-        messageElement.style.backgroundColor = "#3b3b3b";
-        messageCover.style.justifyContent = 'flex-start';
-      }
+  // Проверка, если сообщение от админа, отображаем его справа
+  if (messageData.sender_id == adminId) {
+    messageElement.style.backgroundColor = "#0066cc"; // Синий фон для сообщений админа
+    messageCover.style.justifyContent = 'flex-end';  // Сообщения админа справа
+  } else {
+    messageElement.style.backgroundColor = "#3b3b3b"; // Серый фон для сообщений пользователя
+    messageCover.style.justifyContent = 'flex-start';  // Сообщения пользователя слева
+  }
 
-      var messageContent = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content || ''} <br> <small>${new Date(messageData.timestamp.seconds * 1000).toLocaleString()}</small>`;
-      if (messageData.image_url) {
-        messageContent += `<br><img src="${messageData.image_url}" alt="Image" class="chat-image" style="max-width: 200px; border-radius: 8px; margin-top: 10px; cursor: pointer;">`;
-      }
+  var messageContent = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content || ''} <br> <small>${new Date(messageData.timestamp.seconds * 1000).toLocaleString()}</small>`;
 
-      messageElement.innerHTML = messageContent;
-      chatBox.appendChild(messageCover);
+  // Проверяем, если есть URL изображения
+  if (messageData.image_url) {
+    messageContent += `<br><img src="${messageData.image_url}" alt="Image" class="chat-image" style="max-width: 200px; border-radius: 8px; margin-top: 10px; cursor: pointer;">`;
+  }
 
-      // Добавляем обработчик для открытия изображения в модальном окне
-      var chatImage = messageElement.querySelector('.chat-image');
-      if (chatImage) {
-        chatImage.addEventListener('click', function() {
-          openImageModal(messageData.image_url);
-        });
-      }
-    }
+  messageElement.innerHTML = messageContent;
+  chatBox.appendChild(messageCover);
+
+  // Добавляем обработчик для открытия изображения в модальном окне
+  var chatImage = messageElement.querySelector('.chat-image');
+  if (chatImage) {
+    chatImage.addEventListener('click', function() {
+      openImageModal(messageData.image_url);
+    });
+  }
+}
+
 
     // Открытие модального окна с изображением
     function openImageModal(imageUrl) {
@@ -279,6 +283,7 @@
       return new Promise((resolve, reject) => {
         var storageRef = storage.ref().child('message_images/' + imageFile.name);
         var uploadTask = storageRef.put(imageFile);
+
         uploadTask.on('state_changed',
           function(snapshot) {
             var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -289,8 +294,9 @@
             reject(error);
           },
           function() {
+            // Получаем ссылку на загруженное изображение
             uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
-              console.log("Изображение загружено. URL:", downloadURL);
+              console.log("Изображение загружено. URL:", downloadURL); // Логируем URL изображения
               resolve(downloadURL);
             }).catch(function(error) {
               console.error("Ошибка при получении URL изображения:", error);
@@ -347,6 +353,16 @@
       color: white;
       font-size: 40px;
       cursor: pointer;
+    }
+    .message-user {
+  justify-content: flex-start;
+  background-color: #3b3b3b;
+    }
+
+    /* Сообщения админа отображаются справа */
+    .message-admin {
+      justify-content: flex-end;
+      background-color: #0066cc;
     }
   </style>
 
