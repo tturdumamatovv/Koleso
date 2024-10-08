@@ -94,7 +94,7 @@ class OrderListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'total_amount', 'order_time', 'restaurant', 'order_items', 'total_bonus_amount',
+        fields = ['id', 'total_amount', 'delivery', 'order_time', 'restaurant', 'order_items', 'total_bonus_amount',
                   'is_pickup', 'user_address', 'app_download_url', 'order_status', 'user', 'comment']
 
     def get_total_amount(self, obj):
