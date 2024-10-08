@@ -127,19 +127,6 @@ class VerifyCodeView(generics.CreateAPIView):
             'chat_id': chat_id
         }, status=status.HTTP_200_OK)
 
-    def save_chat_to_firestore(self, chat):
-        db = firestore.client()
-
-        chat_data = {
-            'user_id': chat.user.id,
-            'admin_id': chat.admin.id,
-            'created_at': chat.created_at,
-        }
-
-        # Добавляем или обновляем информацию о чате в Firestore
-        chat_ref = db.collection('chats').document(str(chat.id))
-        chat_ref.set(chat_data, merge=True)
-
 
 class UserProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer

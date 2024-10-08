@@ -40,6 +40,18 @@ def create_chat_with_admin(sender, instance, created, **kwargs):
 
                 # Логируем создание чата
                 print(f"Создан новый чат между пользователем {instance.full_name} и админом {admin.full_name}")
+
+                # Отправляем информацию о новом чате в Firestore
+                chat_data = {
+                    'user_id': instance.id,
+                    'admin_id': admin.id,
+                    'created_at': new_chat.created_at
+                }
+
+                # Добавляем или обновляем информацию о чате в Firestore
+                chat_ref = db.collection('chats').document(str(new_chat.id))
+                chat_ref.set(chat_data, merge=True)
+
             else:
                 print(f"Чат уже существует между пользователем {instance.full_name} и админом {admin.full_name}")
 
