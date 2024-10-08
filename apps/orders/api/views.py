@@ -320,7 +320,7 @@ class CourierOrderReadyListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Фильтруем заказы со статусом "Готово"
-        return Order.objects.filter(order_status='ready')
+        return Order.objects.filter(order_status='ready', is_pickup=False)
 
 
 class CourierPickOrderView(generics.UpdateAPIView):
