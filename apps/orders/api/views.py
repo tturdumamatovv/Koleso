@@ -300,10 +300,12 @@ class CollectorOrderUpdateView(generics.UpdateAPIView):
     def patch(self, request, *args, **kwargs):
         # Меняем статус заказа на "Готово"
         order_id = kwargs.get('pk')
+        user = request.user
         try:
             order = Order.objects.get(pk=order_id)
             if order.order_status in ['pending', 'in_progress']:
                 order.order_status = 'ready'
+                order.collector = user
                 order.save()
                 return Response({'status': 'success', 'message': 'Заказ обновлен до статуса "Готово".'}, status=status.HTTP_200_OK)
             else:
