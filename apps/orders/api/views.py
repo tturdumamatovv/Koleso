@@ -384,8 +384,8 @@ class CourierOrderHistoryView(generics.ListAPIView):
 
 class CollectorOrderHistoryView(generics.ListAPIView):
     serializer_class = OrderListSerializer
-    permission_classes = [IsCollector]
+    permission_classes = [IsCollector]  # или ваш кастомный класс разрешений для сборщиков
 
     def get_queryset(self):
-        # Возвращаем только заказы, которые были взяты текущим курьером
+        # Возвращаем только заказы, в которых указан текущий сборщик
         return Order.objects.filter(collector=self.request.user).order_by('-order_time')
