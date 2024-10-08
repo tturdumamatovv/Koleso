@@ -10,6 +10,8 @@ from django.contrib.auth.models import (
 from django.utils import timezone
 from django.db.models import Sum, Min, Max
 
+from apps.chat.models import Chat
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, role='user', full_name=None):
@@ -21,6 +23,9 @@ class CustomUserManager(BaseUserManager):
         user = self.model(phone_number=phone_number, role=role, full_name=full_name)
         user.set_password(password)
         user.save(using=self._db)
+        admin = User.objects.filter(is_superuser=True).first()  # Получаем первого администратора
+        if admin:
+            chat = Chat.objects.create(user=user, admin=admin)
         return user
 
     def create_superuser(self, phone_number, password=None, role='admin', full_name=None):
