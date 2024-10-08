@@ -145,6 +145,8 @@ class Order(models.Model):
     delivery_comment = models.TextField(blank=True, null=True, verbose_name=_('Комментарий курьера'))
     courier = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='courier_orders', verbose_name=_('Курьер'))
+    collector = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='collector_orders', verbose_name=_('Сборщик'))
     class Meta:
         verbose_name = _("Заказ")
         verbose_name_plural = _("Заказы")

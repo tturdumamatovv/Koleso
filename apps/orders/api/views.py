@@ -381,3 +381,11 @@ class CourierOrderHistoryView(generics.ListAPIView):
         # Возвращаем только заказы, которые были взяты текущим курьером
         return Order.objects.filter(courier=self.request.user).order_by('-order_time')
 
+
+class CollectorOrderHistoryView(generics.ListAPIView):
+    serializer_class = OrderListSerializer
+    permission_classes = [IsCollector]
+
+    def get_queryset(self):
+        # Возвращаем только заказы, которые были взяты текущим курьером
+        return Order.objects.filter(collector=self.request.user).order_by('-order_time')
