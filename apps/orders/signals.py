@@ -82,23 +82,17 @@ def notify_collectors_on_order_pending(sender, instance, created, **kwargs):
 def notify_couriers_on_order_ready(sender, instance, created, **kwargs):
     # Убедимся, что это обновление заказа и статус изменен на 'ready'
     if not created and instance.order_status == 'ready':
-        # Убедимся, что статус в базе данных обновлен
-        instance.refresh_from_db()
+        deliveries = User.objects.filter(role='delivery')
 
-        # Получаем всех курьеров
-        couriers = User.objects.filter(role='courier')
-
-        # Формируем сообщение о новом готовом заказе
         body = format_order_status_change_message(order_date=instance.order_time, order_id=instance.id, order_status=instance.order_status)
 
-        # Отправляем уведомления каждому курьеру
-        for courier in couriers:
-            if courier.fcm_token:
+        for delivery in deliveries:
+            if delivery.fcm_token:
                 try:
-                    title = "Новый готовый заказ"
-                    send_firebase_notification(token=courier.fcm_token, title=title, body=body)
+                    title = "Новый заказ в ожидании"  # Делаем заголовок одинаковым
+                    send_firebase_notification(token=delivery.fcm_token, title=title, body=body)
                 except Exception as e:
-                    print(f"Ошибка при отправке уведомления курьеру {courier.phone_number}: {e}")
+                    print(f"Ошибка при отправке уведомления курьеру {delivery.phone_number}: {e}")
 
 
 @receiver(post_save, sender=Order)
