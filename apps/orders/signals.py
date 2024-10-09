@@ -64,18 +64,18 @@ def check_status_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Order)
 def notify_collectors_on_order_pending(sender, instance, created, **kwargs):
-    if created or instance.order_status == 'pending':
-        couriers = User.objects.filter(role='courier')  # Временно заменяем collector на courier
+    if created or instance.order_status == 'pending':  # Только если заказ создан или статус изменен на "pending"
+        collectors = User.objects.filter(role='collector')
 
         body = format_order_status_change_message(order_date=instance.order_time, order_id=instance.id, order_status=instance.order_status)
 
-        for courier in couriers:
-            if courier.fcm_token:
+        for collector in collectors:
+            if collector.fcm_token:
                 try:
                     title = "Новый заказ в ожидании"
-                    send_firebase_notification(token=courier.fcm_token, title=title, body=body)
+                    send_firebase_notification(token=collector.fcm_token, title=title, body=body)
                 except Exception as e:
-                    print(f"Ошибка при отправке уведомления курьеру {courier.phone_number}: {e}")
+                    print(f"Ошибка при отправке уведомления сборщику {collector.phone_number}: {e}")
 
 
 @receiver(post_save, sender=Order)
