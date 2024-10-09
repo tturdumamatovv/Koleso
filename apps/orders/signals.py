@@ -82,6 +82,9 @@ def notify_collectors_on_order_pending(sender, instance, created, **kwargs):
 def notify_couriers_on_order_ready(sender, instance, created, **kwargs):
     # Убедимся, что это обновление заказа и статус изменен на 'ready'
     if not created and instance.order_status == 'ready':
+        # Убедимся, что статус в базе данных обновлен
+        instance.refresh_from_db()
+
         # Получаем всех курьеров
         couriers = User.objects.filter(role='courier')
 
@@ -90,7 +93,7 @@ def notify_couriers_on_order_ready(sender, instance, created, **kwargs):
 
         # Отправляем уведомления каждому курьеру
         for courier in couriers:
-            if courier.fcm_token:  # Убедимся, что у курьера есть FCM токен
+            if courier.fcm_token:
                 try:
                     title = "Новый готовый заказ"
                     send_firebase_notification(token=courier.fcm_token, title=title, body=body)
