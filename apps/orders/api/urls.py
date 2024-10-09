@@ -28,6 +28,6 @@ urlpatterns = [
     path('courier/order/delivery/', CourierOrderDeliverListView.as_view(), name='courier-order-delivery'),
     path('courier/order/<int:pk>/complete/', CourierCompleteOrderView.as_view(), name='courier-complete-order'),
     path('courier/orders/history/', CourierOrderHistoryView.as_view(), name='courier-order-history'),
-    path('сollector/orders/history/', CollectorOrderHistoryView.as_view(), name='collector-order-history'),
+    path('collector/orders/history/', CollectorOrderHistoryView.as_view(), name='collector-order-history'),
 ]
 
