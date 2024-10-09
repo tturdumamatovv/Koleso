@@ -78,25 +78,24 @@ def notify_collectors_on_order_pending(sender, instance, created, **kwargs):
                     print(f"Ошибка при отправке уведомления сборщику {collector.phone_number}: {e}")
 
 
-@receiver(pre_save, sender=Order)
-def notify_couriers_on_order_ready(sender, instance, **kwargs):
-    if instance.pk and instance.order_status == 'ready':
-        old_order = sender.objects.get(pk=instance.pk)
-        if old_order.order_status != instance.order_status:
-            # Получаем всех курьеров
-            couriers = User.objects.filter(role='courier')
+@receiver(post_save, sender=Order)
+def notify_couriers_on_order_ready(sender, instance, created, **kwargs):
+    # Убедимся, что это обновление заказа и статус изменен на 'ready'
+    if not created and instance.order_status == 'ready':
+        # Получаем всех курьеров
+        couriers = User.objects.filter(role='courier')
 
-            # Формируем сообщение о новом готовом заказе
-            body = format_order_status_change_message(order_date=instance.order_time, order_id=instance.id, order_status=instance.order_status)
+        # Формируем сообщение о новом готовом заказе
+        body = format_order_status_change_message(order_date=instance.order_time, order_id=instance.id, order_status=instance.order_status)
 
-            # Отправляем уведомления каждому курьеру
-            for courier in couriers:
-                if courier.fcm_token:  # Убедимся, что у курьера есть FCM токен
-                    try:
-                        title = "Новый готовый заказ"
-                        send_firebase_notification(token=courier.fcm_token, title=title, body=body)
-                    except Exception as e:
-                        print(f"Ошибка при отправке уведомления курьеру {courier.phone_number}: {e}")
+        # Отправляем уведомления каждому курьеру
+        for courier in couriers:
+            if courier.fcm_token:  # Убедимся, что у курьера есть FCM токен
+                try:
+                    title = "Новый готовый заказ"
+                    send_firebase_notification(token=courier.fcm_token, title=title, body=body)
+                except Exception as e:
+                    print(f"Ошибка при отправке уведомления курьеру {courier.phone_number}: {e}")
 
 
 @receiver(post_save, sender=Order)
