@@ -80,9 +80,9 @@ def notify_collectors_on_order_pending(sender, instance, created, **kwargs):
 
 @receiver(pre_save, sender=Order)
 def notify_couriers_on_order_ready(sender, instance, **kwargs):
-    if instance.pk:  # Если это обновление заказа
+    if instance.pk and instance.order_status == 'ready':
         old_order = sender.objects.get(pk=instance.pk)
-        if old_order.order_status != instance.order_status and instance.order_status == 'ready':
+        if old_order.order_status != instance.order_status:
             # Получаем всех курьеров
             couriers = User.objects.filter(role='courier')
 
