@@ -66,7 +66,9 @@ class ProductAdmin(SortableAdminMixin, ExcludeBaseFieldsMixin, ModelAdmin, Tabbe
 
     fieldsets = (
         (None, {
-            'fields': ('name', 'description', 'category', 'photo', 'is_popular', 'is_new', 'bonuses', 'kkal', 'proteins', 'fats', 'carbohydrates', 'composition', 'shelf_life', 'storage_conditions', 'manufacturer')
+            'fields': ('name', 'description', 'category', 'photo', 'is_popular', 'is_new', 'bonuses',
+                       'kkal', 'proteins', 'fats', 'carbohydrates', 'composition', 'shelf_life',
+                       'storage_conditions', 'manufacturer', 'tags')
         }),
     )
 
