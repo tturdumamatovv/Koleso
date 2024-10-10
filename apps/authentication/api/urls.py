@@ -11,7 +11,8 @@ from apps.authentication.api.views import (
     NotificationSettingsAPIView,
     UserBonusView,
     CourierCollectorLoginView,
-    ToggleShiftView
+    ToggleShiftView,
+    RetrieveTotalTimeTodayView
     )
 
 urlpatterns = [
@@ -26,4 +27,5 @@ urlpatterns = [
     path('bonus/', UserBonusView.as_view(), name='user-bonus'),
     path('login/courier_collector/', CourierCollectorLoginView.as_view(), name='courier-collector-login'),
     path('shift/toggle/', ToggleShiftView.as_view(), name='toggle-shift'),
+    path('total-time-today/', RetrieveTotalTimeTodayView.as_view(), name='total-time-today'),
 ]

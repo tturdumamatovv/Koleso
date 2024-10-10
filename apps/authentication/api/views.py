@@ -6,6 +6,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import ValidationError
+from rest_framework.views import APIView
 
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -303,6 +304,37 @@ class ToggleShiftView(generics.GenericAPIView):
                 'message': 'Смена начата.',
                 'shift': serializer.data
             }, status=status.HTTP_201_CREATED)
+
+    def get_total_time_today(self, user):
+        # Получаем текущую дату
+        today = timezone.now().date()
+
+        # Фильтруем завершенные смены за сегодняшний день
+        shifts_today = WorkShift.objects.filter(
+            user=user,
+            start_time__date=today,
+            end_time__isnull=False  # Смена завершена
+        )
+
+        # Суммируем продолжительность смен
+        total_duration = shifts_today.aggregate(total_duration=Sum('duration'))['total_duration']
+
+        if total_duration is None:
+            total_duration = timedelta(0)  # Если смен нет, возвращаем 0 времени
+
+        return total_duration
+
+
+class RetrieveTotalTimeTodayView(APIView):
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # Получаем общее время работы за сегодняшний день
+        total_time_today = self.get_total_time_today(user)
+
+        return Response({
+            'total_time_today': str(total_time_today)
+        }, status=status.HTTP_200_OK)
 
     def get_total_time_today(self, user):
         # Получаем текущую дату
