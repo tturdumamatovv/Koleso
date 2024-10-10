@@ -96,6 +96,11 @@ class Product(models.Model):
         return min(prices) if prices else None
 
     def save(self, *args, **kwargs):
+        # Проверка на привязку к конечной категории
+        if self.category and self.category.get_children().exists():
+            raise ValueError(_('Продукты могут быть привязаны только к конечным категориям без подкатегорий'))
+
+    def save(self, *args, **kwargs):
         if self.photo:
             image = Image.open(self.photo)
 
@@ -110,9 +115,12 @@ class Product(models.Model):
             resized_image = image.resize((new_width, new_height), Image.LANCZOS)
 
             image_io = BytesIO()
+            # Устанавливаем имя файла без добавления дополнительных путей
+            new_filename = f"{slugify(self.name)}_{self.pk}.webp"
             resized_image.save(image_io, format='WEBP', quality=85)
 
-            self.photo.save(f"{self.photo.name.split('.')[0]}.webp", ContentFile(image_io.getvalue()), save=False)
+            # Сохраняем файл с корректным именем и без лишних путей
+            self.photo.save(new_filename, ContentFile(image_io.getvalue()), save=False)
 
         super().save(*args, **kwargs)
 

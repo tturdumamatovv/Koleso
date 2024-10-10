@@ -1,5 +1,5 @@
-from django import forms
-from apps.product.models import ProductSize, Size
+from apps.product.models import ProductSize, Product, Category
+from unfold.admin import forms
 
 
 class ProductSizeForm(forms.ModelForm):
@@ -16,4 +16,12 @@ class ProductSizeForm(forms.ModelForm):
         else:
             product = None
 
+class ProductAdminForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = '__all__'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Фильтруем категории, оставляя только конечные (без подкатегорий)
+        self.fields['category'].queryset = Category.objects.filter(children__isnull=True)

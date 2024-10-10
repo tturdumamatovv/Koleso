@@ -6,7 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from modeltranslation.admin import TabbedTranslationAdmin
 
 from .models import Size, Category, Product, ProductSize, Topping, Tag, Article  # Set, Ingredient
-from .forms import ProductSizeForm
+from .forms import ProductSizeForm, ProductAdminForm
 from mptt.admin import DraggableMPTTAdmin
 
 
@@ -57,6 +57,7 @@ class CategoryAdmin(ModelAdmin, DraggableMPTTAdmin, ExcludeBaseFieldsMixin, Tabb
 
 @admin.register(Product)
 class ProductAdmin(SortableAdminMixin, ExcludeBaseFieldsMixin, ModelAdmin, TabbedTranslationAdmin):
+    form = ProductAdminForm
     list_display = ('order', 'name', 'category', 'description', 'proteins', 'fats', 'carbohydrates', 'shelf_life', 'storage_conditions', 'manufacturer')
     search_fields = ('name',)
     list_filter = ('category',)

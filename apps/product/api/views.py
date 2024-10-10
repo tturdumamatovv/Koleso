@@ -32,6 +32,10 @@ class ProductListByCategorySlugView(generics.ListAPIView):
         except Category.DoesNotExist:
             raise NotFound("Категория не найдена")
 
+        # Проверяем, что категория является конечной
+        if category.get_children().exists():
+            raise NotFound("Продукты могут быть привязаны только к конечным категориям")
+
         products = Product.objects.filter(category=category, product_sizes__isnull=False).distinct().order_by('order')
         # sets = Set.objects.filter(category=category)
 
