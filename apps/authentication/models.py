@@ -131,6 +131,7 @@ class WorkShift(models.Model):
     start_time = models.DateTimeField(verbose_name=_("Время начала"), null=True, blank=True)
     end_time = models.DateTimeField(verbose_name=_("Время окончания"), null=True, blank=True)
     duration = models.DurationField(verbose_name=_("Продолжительность смены"), null=True, blank=True)
+    is_open = models.BooleanField(default=False, verbose_name=_("Смена открыта"))  # Новое поле
 
     def calculate_duration(self):
         if self.start_time and self.end_time:
@@ -140,23 +141,16 @@ class WorkShift(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.end_time:
+            self.is_open = False  # Закрываем смену
+            self.save()
             self.update_daily_summary()
 
     def update_daily_summary(self):
-        # Получаем текущую дату
         shift_date = self.start_time.date()
-
-        # Получаем все завершенные смены за этот день
         shifts = WorkShift.objects.filter(user=self.user, start_time__date=shift_date, end_time__isnull=False)
-
-        # Рассчитываем общее время за день
         total_duration = shifts.aggregate(total_duration=Sum('duration'))['total_duration'] or timedelta(0)
-
-        # Получаем время начала первой смены и время окончания последней смены
         start_time = shifts.aggregate(start_time=Min('start_time'))['start_time']
         end_time = shifts.aggregate(end_time=Max('end_time'))['end_time']
-
-        # Обновляем или создаем сводку за день
         summary, created = DailyWorkSummary.objects.update_or_create(
             user=self.user,
             date=shift_date,

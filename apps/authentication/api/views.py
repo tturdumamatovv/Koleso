@@ -279,11 +279,13 @@ class ToggleShiftView(generics.GenericAPIView):
         user = request.user
 
         try:
-            # Проверяем, есть ли активная смена (время окончания не установлено)
-            active_shift = WorkShift.objects.get(user=user, end_time__isnull=True)
+            # Проверяем, есть ли активная смена (время окончания не установлено и смена открыта)
+            active_shift = WorkShift.objects.get(user=user, end_time__isnull=True, is_open=True)
             # Завершаем активную смену
             active_shift.end_time = timezone.now()
             active_shift.calculate_duration()  # Рассчитываем продолжительность
+            active_shift.is_open = False  # Закрываем смену
+            active_shift.save()  # Сохраняем изменения
             serializer = self.get_serializer(active_shift)
 
             # Рассчитываем общее время работы за сегодня
@@ -297,7 +299,7 @@ class ToggleShiftView(generics.GenericAPIView):
 
         except WorkShift.DoesNotExist:
             # Если активной смены нет, создаем новую
-            new_shift = WorkShift.objects.create(user=user, start_time=timezone.now())
+            new_shift = WorkShift.objects.create(user=user, start_time=timezone.now(), is_open=True)
             serializer = self.get_serializer(new_shift)
 
             return Response({
@@ -306,17 +308,8 @@ class ToggleShiftView(generics.GenericAPIView):
             }, status=status.HTTP_201_CREATED)
 
     def get_total_time_today(self, user):
-        # Получаем текущую дату
         today = timezone.now().date()
-
-        # Фильтруем завершенные смены за сегодняшний день
-        shifts_today = WorkShift.objects.filter(
-            user=user,
-            start_time__date=today,
-            end_time__isnull=False  # Смена завершена
-        )
-
-        # Суммируем продолжительность смен
+        shifts_today = WorkShift.objects.filter(user=user, start_time__date=today, end_time__isnull=False)
         total_duration = shifts_today.aggregate(total_duration=Sum('duration'))['total_duration']
 
         if total_duration is None:
@@ -332,22 +325,26 @@ class RetrieveTotalTimeTodayView(APIView):
         # Получаем общее время работы за сегодняшний день
         total_time_today = self.get_total_time_today(user)
 
+        # Проверяем, есть ли открытая смена
+        try:
+            active_shift = WorkShift.objects.get(user=user, is_open=True)
+            is_shift_open = True
+        except WorkShift.DoesNotExist:
+            is_shift_open = False
+
         return Response({
-            'total_time_today': str(total_time_today)
+            'total_time_today': str(total_time_today),
+            'is_shift_open': is_shift_open  # Возвращаем статус смены
         }, status=status.HTTP_200_OK)
 
     def get_total_time_today(self, user):
-        # Получаем текущую дату
         today = timezone.now().date()
-
-        # Фильтруем завершенные смены за сегодняшний день
         shifts_today = WorkShift.objects.filter(
             user=user,
             start_time__date=today,
             end_time__isnull=False  # Смена завершена
         )
 
-        # Суммируем продолжительность смен
         total_duration = shifts_today.aggregate(total_duration=Sum('duration'))['total_duration']
 
         if total_duration is None:

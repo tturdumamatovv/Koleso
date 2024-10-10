@@ -136,6 +136,6 @@ class CourierCollectorLoginSerializer(serializers.Serializer):
 class WorkShiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkShift
-        fields = ['user', 'start_time', 'end_time', 'duration']
-        read_only_fields = ['user', 'start_time', 'end_time', 'duration']
+        fields = ['user', 'start_time', 'end_time', 'duration', 'is_open']  # Добавляем поле is_open
+        read_only_fields = ['user', 'start_time', 'end_time', 'duration', 'is_open']
 
