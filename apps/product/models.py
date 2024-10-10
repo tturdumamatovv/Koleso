@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 from unidecode import unidecode
 from mptt.models import MPTTModel, TreeForeignKey
 
@@ -53,9 +54,15 @@ class Category(MPTTModel):
     def get_absolute_url(self):
         return f"/admin/product/category/{self.id}/change/"
 
+    def clean(self):
+        # Проверка на глубину вложенности (не более 3 уровней)
+        if self.parent and self.parent.get_level() >= 2:
+            raise ValidationError(_('Категория не может быть вложена глубже, чем на 3 уровня (category → subcategory → subsubcategory).'))
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(unidecode(self.name))
+        self.clean()
         super().save(*args, **kwargs)
 
 
