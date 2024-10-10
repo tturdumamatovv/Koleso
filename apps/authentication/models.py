@@ -136,13 +136,14 @@ class WorkShift(models.Model):
     def calculate_duration(self):
         if self.start_time and self.end_time:
             self.duration = self.end_time - self.start_time
-            self.save()
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+        # Проверяем, если время окончания установлено, то закрываем смену
+        if self.end_time and self.is_open:
+            self.is_open = False
+            self.calculate_duration()  # Рассчитываем продолжительность перед сохранением
+        super().save(*args, **kwargs)  # Здесь вызываем родительский метод save
         if self.end_time:
-            self.is_open = False  # Закрываем смену
-            self.save()
             self.update_daily_summary()
 
     def update_daily_summary(self):
