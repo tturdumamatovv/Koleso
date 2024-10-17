@@ -48,6 +48,7 @@ class DeliveryAdmin(ModelAdmin):
 class OrderItemInline(TabularInline):
     model = OrderItem
     extra = 0
+    exclude = ('topping',)
 
 
 @admin.register(Order)
@@ -63,6 +64,7 @@ class OrderAdmin(ModelAdmin, ImportExportModelAdmin):
     list_editable = ('order_status',)
     readonly_fields = ('user', 'delivery', 'order_source', 'id',)
     inlines = [OrderItemInline]
+    exclude = ('promo_code',)
 
     def total_amount(self, obj):
         return obj.get_total_amount()
