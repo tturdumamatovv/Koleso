@@ -139,6 +139,7 @@ class Order(models.Model):
     )
     comment = models.TextField(verbose_name=_('Комментарий'), blank=True, null=True)
 
+    promo_code = models.ForeignKey('PromoCode', on_delete=models.SET_NULL, null=True, blank=True)
     delivery_photo = models.ImageField(upload_to='delivery_photos/', blank=True, null=True,
                                        verbose_name=_('Фото доставки'))
     delivery_comment = models.TextField(blank=True, null=True, verbose_name=_('Комментарий курьера'))
@@ -183,8 +184,7 @@ class Order(models.Model):
         return total_bonus_amount
 
     def save(self, *args, **kwargs):
-        # Убираем логику с промокодами
-        self.total_amount = self.get_total_amount()  # Получите общую сумму без промокодов
+        self.total_amount = self.apply_promo_code()
         super().save(*args, **kwargs)
 
 
