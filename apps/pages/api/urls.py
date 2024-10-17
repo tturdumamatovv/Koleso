@@ -5,7 +5,9 @@ from .views import (
     ContactsView,
     StaticPageDetailView,
     LayOutView,
-    BannersView, StoriesView, StoriesViewedView
+    BannersView,
+    StoriesView,
+    StoriesViewedView
 )
 
 urlpatterns = [
@@ -21,5 +23,4 @@ urlpatterns = [
     path('layout/', LayOutView.as_view(), name='layout'),
     path('stories/', StoriesView.as_view(), name='stories'),
     path('stories/viewed/', StoriesViewedView.as_view(), name='stories'),
-
 ]

@@ -12,7 +12,10 @@ from apps.pages.models import (
     Address,
     PaymentMethod,
     Contacts,
-    StaticPage, Stories, Story, StoriesUserCheck
+    StaticPage,
+    Stories,
+    Story,
+    StoriesUserCheck
 )
 
 

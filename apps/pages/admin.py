@@ -117,11 +117,11 @@ class MainPageAdmin(ModelAdmin):
     inlines = [OrderTypesInline, DeliveryConditionsInline, MethodsOfPaymentInline]
 
 
-class StoryInline(TabularInline):
-    extra = 0
-    model = Story
+# class StoryInline(TabularInline):
+#     extra = 0
+#     model = Story
 
 
-@admin.register(Stories)
-class StoriesAdmin(ModelAdmin):
-    inlines = [StoryInline]
+# @admin.register(Stories)
+# class StoriesAdmin(ModelAdmin):
+#     inlines = [StoryInline]

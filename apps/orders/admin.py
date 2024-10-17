@@ -3,7 +3,7 @@ from urllib.parse import quote
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from import_export.admin import ImportExportModelAdmin
 from unfold.contrib.import_export.forms import ExportForm, ImportForm, SelectableFieldsExportForm
 
@@ -45,7 +45,7 @@ class DeliveryAdmin(ModelAdmin):
     list_filter = ('delivery_time', 'restaurant')
 
 
-class OrderItemInline(admin.TabularInline):
+class OrderItemInline(TabularInline):
     model = OrderItem
     extra = 0
 
@@ -108,8 +108,8 @@ class ReportAdmin(ModelAdmin):
     pass
 
 
-@admin.register(PromoCode)
-class PromoCodeAdmin(ModelAdmin):
-    list_display = ['code', 'discount', 'valid_from', 'valid_to', 'active']
-    list_filter = ['active', 'valid_from', 'valid_to']
-    search_fields = ['code']
+# @admin.register(PromoCode)
+# class PromoCodeAdmin(ModelAdmin):
+#     list_display = ['code', 'discount', 'valid_from', 'valid_to', 'active']
+#     list_filter = ['active', 'valid_from', 'valid_to']
+#     search_fields = ['code']

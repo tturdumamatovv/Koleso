@@ -113,13 +113,13 @@ UNFOLD = {
                 ],
             },
             {
-                "title": _("Рестораны"),
+                "title": _("Склады"),
                 "icon": "restaurant",
                 "collapsible": True,
                 "items": [
                     {
-                        "title": _("Рестораны"),
-                        "icon": "coffee",
+                        "title": _("Склады"),
+                        "icon": "home",
                         "link": reverse_lazy("admin:orders_restaurant_changelist"),
                     },
                     {
@@ -143,11 +143,6 @@ UNFOLD = {
                         "title": _("Продукты"),
                         "icon": "local_pizza",
                         "link": reverse_lazy("admin:product_product_changelist"),
-                    },
-                    {
-                        "title": _("Топпинги"),
-                        "icon": "emoji_food_beverage",
-                        "link": reverse_lazy("admin:product_topping_changelist"),
                     },
                     {
                         "title": _("Категории"),
@@ -186,10 +181,10 @@ UNFOLD = {
                         "icon": "view_carousel",
                         "link": reverse_lazy("admin:pages_banner_changelist"),
                     },
-                    {
-                        "title": _("Истории"),
-                        "link": reverse_lazy("admin:pages_stories_changelist"),
-                    },
+                    # {
+                    #     "title": _("Истории"),
+                    #     "link": reverse_lazy("admin:pages_stories_changelist"),
+                    # },
                     {
                         "title": _("Контакты"),
                         "icon": "contact_phone",

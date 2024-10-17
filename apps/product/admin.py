@@ -74,16 +74,9 @@ class ProductAdmin(SortableAdminMixin, ExcludeBaseFieldsMixin, ModelAdmin, Tabbe
     )
 
 
-@admin.register(Topping)
-class ToppingAdmin(ExcludeBaseFieldsMixin, ModelAdmin, TabbedTranslationAdmin):
-    list_display = ('name', 'price')
-    search_fields = ('name',)
-    exclude_base_fields = ('name',)
-
-
-@admin.register(Article)
-class ArticleAdmin(ExcludeBaseFieldsMixin, ModelAdmin, TabbedTranslationAdmin):
-    list_display = ('title', 'text')
+# @admin.register(Article)
+# class ArticleAdmin(ExcludeBaseFieldsMixin, ModelAdmin, TabbedTranslationAdmin):
+#     list_display = ('title', 'text')
 
 # @admin.register(Set)
 # class SetAdmin(ExcludeBaseFieldsMixin, TranslationAdmin):

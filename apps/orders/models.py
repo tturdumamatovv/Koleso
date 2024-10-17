@@ -59,8 +59,8 @@ class Restaurant(models.Model):
     self_pickup_available = models.BooleanField(default=True, verbose_name=_('Самовывоз доступен'))
 
     class Meta:
-        verbose_name = _("Ресторан")
-        verbose_name_plural = _("Рестораны")
+        verbose_name = _("Склад")
+        verbose_name_plural = _("Склады")
 
     def __str__(self):
         return self.name
@@ -94,7 +94,7 @@ class Delivery(models.Model):
 
 
 class Order(models.Model):
-    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, verbose_name=_('Ресторан'))
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, verbose_name=_('Склад'))
     delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE, verbose_name=_('Доставка'), blank=True, null=True)
     order_time = models.DateTimeField(auto_now_add=True, verbose_name=_('Время заказа'))
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Общая сумма'), blank=True,
@@ -139,7 +139,6 @@ class Order(models.Model):
     )
     comment = models.TextField(verbose_name=_('Комментарий'), blank=True, null=True)
 
-    promo_code = models.ForeignKey('PromoCode', on_delete=models.SET_NULL, null=True, blank=True)
     delivery_photo = models.ImageField(upload_to='delivery_photos/', blank=True, null=True,
                                        verbose_name=_('Фото доставки'))
     delivery_comment = models.TextField(blank=True, null=True, verbose_name=_('Комментарий курьера'))
@@ -192,7 +191,6 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items', verbose_name=_('Заказ'))
     product_size = models.ForeignKey(ProductSize, on_delete=models.CASCADE, verbose_name=_('Размер продукта'),
                                      blank=True, null=True)
-    topping = models.ManyToManyField(Topping, blank=True, verbose_name=_('Добавки'))
     quantity = models.PositiveIntegerField(verbose_name=_('Количество'))
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Общая сумма'))
     is_bonus = models.BooleanField(default=False, verbose_name=_('Бонусный продукт'))
@@ -286,3 +284,7 @@ class PromoCode(models.Model):
     def is_valid(self):
         from django.utils import timezone
         return self.active and self.valid_from <= timezone.now() <= self.valid_to
+
+    class Meta:
+        verbose_name = _("Промо Код")
+        verbose_name_plural = _("Промо Коды")

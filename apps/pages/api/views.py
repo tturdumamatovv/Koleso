@@ -9,14 +9,19 @@ from apps.pages.models import (
     Banner,
     MainPage,
     Contacts,
-    StaticPage, Stories, StoriesUserCheck
+    StaticPage,
+    Stories,
+    StoriesUserCheck
 )
 from apps.pages.api.serializers import (
     HomePageSerializer,
     ContactsSerializer,
     StaticPageSerializer,
     LayOutSerializer,
-    BannerSerializer, MetaDataSerializer, StoriesSerializer, StoriesCheckSerializer
+    BannerSerializer,
+    MetaDataSerializer,
+    StoriesSerializer,
+    StoriesCheckSerializer,
 )
 
 
