@@ -183,7 +183,8 @@ class Order(models.Model):
         return total_bonus_amount
 
     def save(self, *args, **kwargs):
-        self.total_amount = self.apply_promo_code()
+        # Убираем логику с промокодами
+        self.total_amount = self.get_total_amount()  # Получите общую сумму без промокодов
         super().save(*args, **kwargs)
 
 
