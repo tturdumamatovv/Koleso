@@ -193,6 +193,7 @@ class ReOrderView(generics.GenericAPIView):
 
             # Копируем все OrderItem из оригинального заказа в новый
             for item in original_order.order_items.all():
+                # Создаём новый OrderItem без копирования первичного ключа (id)
                 new_order_item = OrderItem.objects.create(
                     order=new_order,
                     product_size=item.product_size,
