@@ -1,7 +1,6 @@
 from django.urls import path
 from .views import (
     CreateOrderView,
-    ReOrderView,
     OrderPreviewView,
     ReportCreateView,
     RestaurantListView,
@@ -18,7 +17,6 @@ from .views import (
 
 urlpatterns = [
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
-    path('reorder/', ReOrderView.as_view(), name='reorder'),
     path('orders/', ListOrderView.as_view(), name='order-list'),
     path('order-preview/', OrderPreviewView.as_view(), name='order-preview'),
     path('reports/', ReportCreateView.as_view(), name='create-report'),
