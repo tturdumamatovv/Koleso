@@ -196,12 +196,16 @@ class ReOrderView(generics.GenericAPIView):
 
             # Копируем все OrderItem из оригинального заказа в новый
             for item in original_order.order_items.all():
+                # Вычисляем общую сумму для каждого элемента заказа
+                total_amount = item.quantity * item.product_size.get_price()
+
                 # Создаем новый объект OrderItem без сохранения
                 new_order_item = OrderItem(
                     order=new_order,
                     product_size=item.product_size,
                     quantity=item.quantity,
-                    is_bonus=item.is_bonus
+                    is_bonus=item.is_bonus,
+                    total_amount=total_amount  # Вычисляем и передаем total_amount
                 )
                 new_order_items.append(new_order_item)
 
