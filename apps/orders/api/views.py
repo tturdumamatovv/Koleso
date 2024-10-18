@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 
+from django.db import transaction
+
 import requests
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -9,7 +11,7 @@ from apps.authentication.models import UserAddress
 from apps.orders.models import (
     Restaurant,
     TelegramBotToken,
-    Order, PromoCode
+    Order, PromoCode, OrderItem
 )
 from apps.services.bonuces import (
     calculate_bonus_points,
@@ -158,6 +160,56 @@ class CreateOrderView(generics.CreateAPIView):
                     min_distance = distance
                     nearest_restaurant = restaurant
         return min_distance, nearest_restaurant
+
+
+class ReOrderView(generics.GenericAPIView):
+    serializer_class = OrderSerializer
+
+    def post(self, request, *args, **kwargs):
+        # Получаем order_id из запроса
+        order_id = request.data.get('order_id', None)
+        if not order_id:
+            return Response({"error": "Order ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Ищем заказ по order_id
+            original_order = Order.objects.get(id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Начинаем транзакцию для создания нового заказа
+        with transaction.atomic():
+            # Создаем новый заказ с теми же полями, кроме идентификатора и времени
+            new_order = Order.objects.create(
+                user=request.user,
+                restaurant=original_order.restaurant,
+                delivery=original_order.delivery,
+                payment_method=original_order.payment_method,
+                change=original_order.change,
+                is_pickup=original_order.is_pickup,
+                comment=original_order.comment,
+                promo_code=original_order.promo_code
+            )
+
+            # Копируем все OrderItem из оригинального заказа в новый
+            for item in original_order.order_items.all():
+                new_order_item = OrderItem.objects.create(
+                    order=new_order,
+                    product_size=item.product_size,
+                    quantity=item.quantity,
+                    is_bonus=item.is_bonus
+                )
+                # Копируем начинки (toppings), если есть
+                new_order_item.topping.set(item.topping.all())
+                new_order_item.save()
+
+            # Сохраняем новый заказ
+            new_order.save()
+
+        # Возвращаем данные о новом заказе
+        serializer = self.get_serializer(new_order)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class OrderPreviewView(generics.GenericAPIView):
