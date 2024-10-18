@@ -191,21 +191,27 @@ class ReOrderView(generics.GenericAPIView):
                 promo_code=original_order.promo_code
             )
 
+            # Список для новых OrderItem
+            new_order_items = []
+
             # Копируем все OrderItem из оригинального заказа в новый
             for item in original_order.order_items.all():
-                # Создаём новый OrderItem без копирования первичного ключа (id)
-                new_order_item = OrderItem.objects.create(
+                # Создаем новый объект OrderItem без сохранения
+                new_order_item = OrderItem(
                     order=new_order,
                     product_size=item.product_size,
                     quantity=item.quantity,
                     is_bonus=item.is_bonus
                 )
-                # Копируем начинки (toppings), если есть
-                new_order_item.topping.set(item.topping.all())
-                new_order_item.save()
+                new_order_items.append(new_order_item)
 
-            # Сохраняем новый заказ
-            new_order.save()
+            # Используем bulk_create для создания всех OrderItem за один раз
+            OrderItem.objects.bulk_create(new_order_items)
+
+            # Обрабатываем ManyToMany связи (topping)
+            for new_item, old_item in zip(new_order_items, original_order.order_items.all()):
+                toppings = old_item.topping.all()
+                new_item.topping.set(toppings)
 
         # Возвращаем данные о новом заказе
         serializer = self.get_serializer(new_order)
