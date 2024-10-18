@@ -49,13 +49,16 @@ class ProductOrderItemSerializer(serializers.ModelSerializer):
         if photo_url and request:
             photo_url = request.build_absolute_uri(photo_url)
 
+        product_exists = obj.product_size.product.__class__.objects.filter(pk=obj.product_size.product.pk).exists()
+
         return {
             'name': obj.product_size.product.name,
             'description': obj.product_size.product.description,
             'price': obj.product_size.get_price(),
             'image': photo_url,
             'product_size': obj.product_size.size.name,
-            'product_size_id': obj.product_size.id
+            'product_size_id': obj.product_size.id,
+            'in_stock': product_exists
         }
 
 
