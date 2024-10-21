@@ -292,7 +292,7 @@ class CollectorOrderListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Получаем заказы для сборщика
-        return Order.objects.filter(order_status__in=['pending', 'in_progress'])
+        return Order.objects.filter(order_status__in=['pending', 'in_progress']).order_by('order_time')
 
 
 class CollectorOrderUpdateView(generics.UpdateAPIView):
