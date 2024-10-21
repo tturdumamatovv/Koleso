@@ -134,6 +134,8 @@ class CourierCollectorLoginSerializer(serializers.Serializer):
 
 
 class WorkShiftSerializer(serializers.ModelSerializer):
+    start_time = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
+    end_time = serializers.DateTimeField(format="%d/%m/%Y %H:%M", read_only=True)
     class Meta:
         model = WorkShift
         fields = ['user', 'start_time', 'end_time', 'duration', 'is_open']  # Добавляем поле is_open
