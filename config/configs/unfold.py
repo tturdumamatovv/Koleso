@@ -198,15 +198,15 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     {
-                        "title": _("Telegram"),
+                        "title": _("Ключ для карты"),
                         "icon": "settings",
                         "link": reverse_lazy("admin:orders_telegrambottoken_changelist"),
                     },
-                    {
-                        "title": _("WhatsApp"),
-                        "icon": "settings",
-                        "link": reverse_lazy("admin:orders_whatsappchat_changelist"),
-                    },
+                    # {
+                    #     "title": _("WhatsApp"),
+                    #     "icon": "settings",
+                    #     "link": reverse_lazy("admin:orders_whatsappchat_changelist"),
+                    # },
                     {
                         "title": _("Кэшбэк"),
                         "icon": "settings",

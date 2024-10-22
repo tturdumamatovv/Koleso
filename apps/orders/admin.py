@@ -23,7 +23,7 @@ from apps.services.generate_message import generate_order_message
 
 @admin.register(TelegramBotToken)
 class TelegramBotTokenAdmin(ModelAdmin):
-    pass
+    exclude = ['bot_token', 'report_channels', 'app_download_link']
 
 
 @admin.register(WhatsAppChat)

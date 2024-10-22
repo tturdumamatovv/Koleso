@@ -24,7 +24,7 @@ class WhatsAppChat(SingletonModel):
 
 
 class TelegramBotToken(models.Model):
-    bot_token = models.CharField(max_length=200, unique=True, verbose_name=_("Телеграм Бот Токен"))
+    bot_token = models.CharField(max_length=200, unique=True, verbose_name=_("Телеграм Бот Токен"), null=True, blank=True)
     report_channels = models.TextField(max_length=200, blank=True, null=True, verbose_name=_("Айди каналов"))
     app_download_link = models.CharField(max_length=250, blank=True, null=True, verbose_name=_("Ссылка на приложение"))
     google_map_api_key = models.CharField(max_length=250, blank=True, null=True, verbose_name=_("Ключ для карты"))
@@ -38,7 +38,7 @@ class TelegramBotToken(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return "Токен бота Telegram"
+        return "Ключ для карты"
 
     class Meta:
         verbose_name = _("Токен бота Telegram")
