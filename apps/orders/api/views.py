@@ -7,7 +7,7 @@ import requests
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from apps.authentication.models import UserAddress
+from apps.authentication.models import UserAddress, BlacklistedAddress
 from apps.orders.models import (
     Restaurant,
     TelegramBotToken,
@@ -64,9 +64,18 @@ class CreateOrderView(generics.CreateAPIView):
         promo_code = request.data.get('promo_code', None)
         order_time = datetime.now()
         if user_address_id:
-            user_address_instance = UserAddress.objects.get(id=user_address_id, user=user)
+            try:
+                user_address_instance = UserAddress.objects.get(id=user_address_id, user=user)
+
+                # Проверка на черный список
+                if BlacklistedAddress.objects.filter(address=user_address_instance).exists():
+                    return Response({"error": "Данный адрес находится в черном списке. Заказ нельзя оформить."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+            except UserAddress.DoesNotExist:
+                return Response({"error": "Адрес пользователя не найден."}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            user_address_instance = 1
+            user_address_instance = None
         token = TelegramBotToken.objects.first()
         is_pickup = request.data.get('is_pickup', False)
 
