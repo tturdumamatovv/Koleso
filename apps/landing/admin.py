@@ -1,5 +1,5 @@
 from django.contrib import admin
-from unfold.admin import TabularInline, ModelAdmin
+from unfold.admin import TabularInline, ModelAdmin, StackedInline
 from .models import (
     MainPageSite, ServiceFeature, ServiceFeatureStep, StaticPage,
     ConvenientFunctionality, ConvenientFunctionalityChapter, PaymentMethod,
@@ -25,7 +25,7 @@ class ServiceFeatureAdmin(ModelAdmin):
 
 
 # Inline for ConvenientFunctionalityChapter
-class ConvenientFunctionalityChapterInline(TabularInline):
+class ConvenientFunctionalityChapterInline(StackedInline):
     model = ConvenientFunctionalityChapter
     extra = 1
 

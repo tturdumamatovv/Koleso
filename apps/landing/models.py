@@ -192,6 +192,8 @@ class ConvenientFunctionalityChapter(models.Model):
     title = models.CharField(max_length=255, verbose_name=_("Заголовок"), blank=True, null=True)
     description = models.TextField(verbose_name=_("Описание"), blank=True, null=True)
     image = models.FileField(verbose_name=_("Изображение"), upload_to="images/static", blank=True, null=True)
+    image2 = models.FileField(verbose_name=_("Изображение 2"), upload_to="images/static", blank=True, null=True)
+    image3 = models.FileField(verbose_name=_("Изображение 3"), upload_to="images/static", blank=True, null=True)
     qr_image = models.FileField(verbose_name=_("Qr Изображение"), upload_to="images/static", blank=True, null=True)
     qr_link = models.URLField(verbose_name="Ссылка", max_length=255, blank=True, null=True)
 
