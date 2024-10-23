@@ -49,6 +49,7 @@ DJANGO_APPS = [
     'apps.product',
     'apps.orders',
     'apps.pages',
+    'apps.landing',
     'apps.chat'
 ]
 

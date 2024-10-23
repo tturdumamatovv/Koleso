@@ -219,6 +219,38 @@ UNFOLD = {
                     },
                 ],
             },
+{
+                "title": _("Сайт"),
+                "icon": "settings",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": _("Главная Страница"),
+                        "icon": "",
+                        "link": reverse_lazy("admin:landing_mainpagesite_changelist"),
+                    },
+                    {
+                        "title": _("Статические Страницы"),
+                        "icon": "",
+                        "link": reverse_lazy("admin:landing_staticpage_changelist"),
+                    },
+                    {
+                        "title": _("Продукт"),
+                        "icon": "",
+                        "link": reverse_lazy("admin:landing_product_changelist"),
+                    },
+                    {
+                        "title": _("Раздел Удобный Функционал"),
+                        "icon": "",
+                        "link": reverse_lazy("admin:landing_convenientfunctionality_changelist"),
+                    },
+                    {
+                        "title": _("Особенность сервиса"),
+                        "icon": "",
+                        "link": reverse_lazy("admin:landing_servicefeature_changelist"),
+                    },
+                ],
+            },
         ],
     },
     # "TABS": [
