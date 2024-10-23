@@ -118,7 +118,6 @@ class OrderListSerializer(serializers.ModelSerializer):
     def get_user_address(self, obj):
         return obj.delivery.user_address.city if obj.delivery.user_address else "Самовывоз"
 
-
     def get_app_download_url(self, obj):
         link = TelegramBotToken.objects.first().app_download_link
         if not link:

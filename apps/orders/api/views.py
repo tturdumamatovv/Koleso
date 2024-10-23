@@ -360,7 +360,7 @@ class CourierOrderDeliverListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Фильтруем заказы со статусом "Готово"
-        return Order.objects.filter(order_status='delivery').order_by('-order_time')
+        return Order.objects.filter(order_status='delivery', courier=self.request.user).order_by('-order_time')
 
 
 class CourierCompleteOrderView(generics.UpdateAPIView):
