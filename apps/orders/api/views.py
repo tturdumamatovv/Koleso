@@ -1,9 +1,11 @@
+import requests
+
 from datetime import datetime
 from decimal import Decimal
+from decouple import config
 
-from django.db import transaction
+import xml.etree.ElementTree as ET
 
-import requests
 from rest_framework import generics, status
 from rest_framework.response import Response
 
@@ -31,7 +33,14 @@ from .serializers import (
     OrderListSerializer,
     OrderDeliverySerializer
 )
+from ..freedompay import generate_signature
 from ..permissions import IsCollector
+
+
+PAYBOX_URL = config('PAYBOX_URL')
+PAYBOX_MERCHANT_ID = config('PAYBOX_MERCHANT_ID')
+PAYBOX_MERCHANT_SECRET = config('PAYBOX_MERCHANT_SECRET')
+PAYBOX_MERCHANT_SECRET_PAYOUT = config('PAYBOX_MERCHANT_SECRET_PAYOUT')
 
 
 class ListOrderView(generics.ListAPIView):
@@ -63,6 +72,8 @@ class CreateOrderView(generics.CreateAPIView):
         comment = request.data.get('comment', '')
         promo_code = request.data.get('promo_code', None)
         order_time = datetime.now()
+        payment_method = request.data.get('payment_method', 'cash')  # Default to 'cash'
+
         if user_address_id:
             try:
                 user_address_instance = UserAddress.objects.get(id=user_address_id, user=user)
@@ -76,6 +87,7 @@ class CreateOrderView(generics.CreateAPIView):
                 return Response({"error": "Адрес пользователя не найден."}, status=status.HTTP_400_BAD_REQUEST)
         else:
             user_address_instance = None
+
         token = TelegramBotToken.objects.first()
         is_pickup = request.data.get('is_pickup', False)
 
@@ -110,7 +122,6 @@ class CreateOrderView(generics.CreateAPIView):
             delivery_fee = 0
 
         serializer = self.add_setializer_context(delivery_fee, nearest_restaurant, request, user)
-
         self.perform_create(serializer)
 
         order = serializer.instance
@@ -128,21 +139,34 @@ class CreateOrderView(generics.CreateAPIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Generate the order message and save delivery details
         message = generate_order_message(order, min_distance, delivery_fee)
         order.delivery.distance_km = min_distance
         order.delivery.save()
         print(message)
+
         bot_token_instance = TelegramBotToken.objects.first()
         if bot_token_instance:
             self.send_order(bot_token_instance, message, nearest_restaurant)
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # If payment method is card, generate payment link using FreedomPay
+        if payment_method == "card":
+            email = user.email
+            phone_number = user.phone_number
+            payment_url = self.create_freedompay_payment(order, email, phone_number)
+
+            if not payment_url:
+                return Response({"error": "Failed to create payment link."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # Add the payment URL to the response data
+            response_data = serializer.data
+            response_data['freedompay_url'] = payment_url  # Add FreedomPay URL
         else:
-            return Response({"error": "Не установлен токен бота Telegram."}, status=status.HTTP_400_BAD_REQUEST)
+            response_data = serializer.data  # Regular cash payment, no additional data
 
         headers = self.get_success_headers(serializer.data)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
     def send_order(self, bot_token_instance, message, nearest_restaurant):
         telegram_bot_token = bot_token_instance.bot_token
@@ -169,6 +193,55 @@ class CreateOrderView(generics.CreateAPIView):
                     min_distance = distance
                     nearest_restaurant = restaurant
         return min_distance, nearest_restaurant
+
+    def create_freedompay_payment(self, order, email, phone_number):
+        url = f"{PAYBOX_URL}/init_payment.php"
+        amount = order.total_amount
+        order_id = order.id
+        params = {
+            'pg_merchant_id': PAYBOX_MERCHANT_ID,
+            'pg_order_id': order_id,
+            'pg_amount': amount,
+            'pg_currency': 'KGS',
+            'pg_description': f"Оплата заказа #{order_id}",
+            'pg_user_phone': phone_number,
+            'pg_user_contact_email': email,
+            'pg_result_url': 'http://localhost:8000/swagger/',
+            'pg_success_url': 'http://localhost:8001/swagger/',
+            'pg_failure_url': 'http://localhost:8000/payment/failure',
+            'pg_testing_mode': 1,
+            'pg_salt': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+        # Генерация подписи
+        params['pg_sig'] = generate_signature(params, 'init_payment.php')
+
+        try:
+            response = requests.post(url, data=params)
+            response.raise_for_status()  # Raise an error for bad responses
+
+            # Log the response for debugging
+            print("Response from payment gateway:", response.text)
+
+            # Join response text if it's split into multiple parts
+            response_text = ''.join(response.text)  # Concatenate if it's broken into parts
+
+            # Parse the XML response
+            root = ET.fromstring(response_text)
+            payment_url = root.find('pg_redirect_url')
+
+            if payment_url is None or not payment_url.text:
+                raise ValueError("Payment URL is missing in the response.")
+
+            # Return the payment URL as a clean string
+            return payment_url.text
+
+        except ET.ParseError:
+            return None
+
+        except requests.RequestException as e:
+            print(f"Error during request to Paybox: {e}")
+            return None
 
 
 class OrderPreviewView(generics.GenericAPIView):
