@@ -247,7 +247,7 @@ class DistancePricing(models.Model):
 class PercentCashback(SingletonModel):
     mobile_percent = models.IntegerField(verbose_name=_("Процент за мобильное приложение"))
     web_percent = models.IntegerField(verbose_name=_("Процент за веб-сайт"))
-    min_order_price = models.IntegerField(verbose_name=_("Минимальная сумма заказа"), null=True)
+    min_order_price = models.IntegerField(verbose_name=_("Минимальная сумма заказа"))
 
     def __str__(self):
         return f"Процент кэшбека № {self.id}"
