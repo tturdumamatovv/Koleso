@@ -137,13 +137,24 @@ class ContactsSerializer(serializers.ModelSerializer):
     addresses = AddressSerializer(many=True, source='address_set')
     payment_methods = PaymentMethodSerializer(many=True, source='paymentmethod_set')
     static_pages = serializers.SerializerMethodField()
+    cash_back = serializers.SerializerMethodField()
 
     class Meta:
         model = Contacts
-        fields = ['phones', 'emails', 'social_links', 'addresses', 'payment_methods', 'static_pages']
+        fields = ['phones', 'emails', 'social_links', 'addresses', 'payment_methods', 'static_pages', 'cash_back']
 
     def get_static_pages(self, obj):
         return StaticPageSerializer(StaticPage.objects.all(), many=True).data
+
+    def get_cash_back(self, obj):
+        percents = PercentCashback.objects.all().first()
+        if not percents:
+            percents = PercentCashback.objects.create(mobile_percent=5, web_percent=3, min_order_price=1000)
+        return {
+            'web': percents.web_percent,
+            'mobile': percents.mobile_percent,
+            'min_order_price': percents.min_order_price
+        }
 
 
 class StaticPageSerializer(serializers.ModelSerializer):
