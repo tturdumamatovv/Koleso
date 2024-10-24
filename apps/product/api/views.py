@@ -15,6 +15,11 @@ class ProductSearchView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
 
+    def get_queryset(self):
+        # Получаем все продукты, у которых есть хотя бы один product_size с количеством больше 0
+        queryset = Product.objects.filter(is_active=True, product_sizes__quantity__gt=0).distinct()
+        return queryset
+
 
 class ProductBonusView(generics.ListAPIView):
     queryset = ProductSize.objects.filter(

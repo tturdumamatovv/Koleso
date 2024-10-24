@@ -190,7 +190,7 @@ class ArticleSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     toppings = ToppingSerializer(many=True)
     tags = TagSerializer(many=True)
-    product_sizes = ProductSizeSerializer(many=True)
+    product_sizes = serializers.SerializerMethodField()
     min_price = serializers.SerializerMethodField()
     bonus_price = serializers.SerializerMethodField()
     category_slug = serializers.SerializerMethodField()
@@ -221,3 +221,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         if obj.category:
             return obj.category.name
         return None
+
+    def get_product_sizes(self, obj):
+        # Фильтруем product_sizes с количеством больше 0
+        product_sizes = obj.product_sizes.filter(quantity__gt=0)
+        return ProductSizeSerializer(product_sizes, many=True).data

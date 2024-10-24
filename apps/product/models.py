@@ -86,6 +86,7 @@ class Product(models.Model):
     bonuses = models.BooleanField(default=False, verbose_name=_('Можно оптатить бонусами'))
     tags = models.ManyToManyField('Tag', related_name='products', verbose_name=_('Теги'), blank=True)
     order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
+    is_active = models.BooleanField(default=True, verbose_name=_("Активный Торав"))
 
     class Meta:
         verbose_name = "Продукт"
