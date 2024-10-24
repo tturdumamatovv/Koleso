@@ -56,7 +56,7 @@ class ProductOrderItemSerializer(serializers.ModelSerializer):
             'description': obj.product_size.product.description,
             'price': obj.product_size.get_price(),
             'image': photo_url,
-            'product_size': obj.product_size.size.name,
+            'product_size': obj.product_size.size,
             'product_size_id': obj.product_size.id,
             'in_stock': product_exists
         }

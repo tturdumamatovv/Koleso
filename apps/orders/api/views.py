@@ -35,7 +35,7 @@ from .serializers import (
 )
 from ..freedompay import generate_signature
 from ..permissions import IsCollector
-
+from ...product.models import ProductSize
 
 PAYBOX_URL = config('PAYBOX_URL')
 PAYBOX_MERCHANT_ID = config('PAYBOX_MERCHANT_ID')
@@ -121,13 +121,51 @@ class CreateOrderView(generics.CreateAPIView):
             min_distance = 0
             delivery_fee = 0
 
+        # Подсчет общей суммы заказа
+        total_amount = Decimal(0)
+
+        # Пробегаем по каждому элементу заказа
+        for item in request.data.get('products', []):
+            product_size_id = item.get('product_size_id')
+            ordered_quantity = item.get('quantity')
+
+            try:
+                product_size = ProductSize.objects.get(id=product_size_id)
+
+                # Проверка на достаточное количество на складе
+                if product_size.quantity < ordered_quantity:
+                    return Response(
+                        {"error": f"Недостаточно товара для {product_size.product.name} - {product_size.size}."},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+                # Уменьшение количества товара
+                product_size.quantity -= ordered_quantity
+                product_size.save()
+
+                # Рассчитываем стоимость для текущей позиции
+                if product_size.unit in ['kg', 'g', 'l', 'ml']:
+                    if product_size.unit == 'g':
+                        unit_quantity = ordered_quantity / 1000  # Пример: 500 г = 0.5 кг
+                    elif product_size.unit == 'ml':
+                        unit_quantity = ordered_quantity / 1000  # Пример: 500 мл = 0.5 л
+                    else:
+                        unit_quantity = ordered_quantity  # Килограммы и литры считаются напрямую
+
+                    total_amount += product_size.get_price() * Decimal(unit_quantity)
+                else:  # Для штук (pcs)
+                    total_amount += product_size.get_price() * Decimal(ordered_quantity)
+
+            except ProductSize.DoesNotExist:
+                return Response({"error": f"Продукт с указанным размером не найден."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.add_setializer_context(delivery_fee, nearest_restaurant, request, user)
         self.perform_create(serializer)
 
         order = serializer.instance
         order.user = self.request.user
         order.comment = comment
-        bonus_points = calculate_bonus_points(Decimal(order.total_amount), Decimal(delivery_fee), order_source)
+        bonus_points = calculate_bonus_points(total_amount, Decimal(delivery_fee), order_source)
         order.total_bonus_amount = bonus_points
 
         try:
@@ -143,7 +181,6 @@ class CreateOrderView(generics.CreateAPIView):
         message = generate_order_message(order, min_distance, delivery_fee)
         order.delivery.distance_km = min_distance
         order.delivery.save()
-        print(message)
 
         bot_token_instance = TelegramBotToken.objects.first()
         if bot_token_instance:
@@ -156,7 +193,8 @@ class CreateOrderView(generics.CreateAPIView):
             payment_url = self.create_freedompay_payment(order, email, phone_number)
 
             if not payment_url:
-                return Response({"error": "Failed to create payment link."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "Failed to create payment link."},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             # Add the payment URL to the response data
             response_data = serializer.data

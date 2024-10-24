@@ -5,7 +5,7 @@ from unfold.admin import forms
 class ProductSizeForm(forms.ModelForm):
     class Meta:
         model = ProductSize
-        fields = ['product', 'size', 'price', 'discounted_price', 'bonus_price']
+        fields = ['product', 'size', 'price', 'discounted_price', 'bonus_price', 'quantity', 'unit']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

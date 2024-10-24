@@ -32,7 +32,7 @@ def generate_order_message(order, delivery_distance_km, delivery_fee):
 
     for item in order.order_items.all():
         if item.product_size:
-            item_details = f"Продукт: {item.product_size.product.name} ({item.product_size.size.name})\n"
+            item_details = f"Продукт: {item.product_size.product.name} ({item.product_size.size})\n"
         # else:
             # item_details = f"Сет: {item.set.name}\n"
 

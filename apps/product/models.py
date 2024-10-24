@@ -133,20 +133,30 @@ class Product(models.Model):
 
 
 class ProductSize(models.Model):
+    UNIT_CHOICES = [
+        ('kg', 'Килограммы'),
+        ('g', 'Граммы'),
+        ('l', 'Литры'),
+        ('ml', 'Миллилитры'),
+        ('pcs', 'Штуки')
+    ]
+
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_sizes',
                                 verbose_name=_('Продукт'))
-    size = models.ForeignKey(Size, on_delete=models.CASCADE, related_name='product_sizes', verbose_name=_('Размер'))
+    size = models.CharField(max_length=255, verbose_name=_('Размер'))
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена'))
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена со скидкой'),
                                            blank=True, null=True)
     bonus_price = models.DecimalField(default=0, max_digits=10, decimal_places=2, verbose_name=_('Цена бонусами'))
+    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
+    unit = models.CharField(max_length=5, choices=UNIT_CHOICES, verbose_name=_('Единица измерения'), default='pcs')
 
     class Meta:
         verbose_name = "Цена продукта по размеру"
         verbose_name_plural = "Цены продуктов по размерам"
 
     def __str__(self):
-        return f"{self.product.name} - {self.size.name} - {self.get_price()}"
+        return f"{self.product.name} - {self.size} - {self.get_price()}"
 
     def get_price(self):
         return self.discounted_price if self.discounted_price else self.price
