@@ -329,12 +329,15 @@ class RetrieveTotalTimeTodayView(APIView):
         try:
             active_shift = WorkShift.objects.get(user=user, is_open=True)
             is_shift_open = True
+            start_time = active_shift.start_time  # Получаем время начала открытой смены
         except WorkShift.DoesNotExist:
             is_shift_open = False
+            start_time = None  # Если смены нет, время начала будет None
 
         return Response({
             'total_time_today': str(total_time_today),
-            'is_shift_open': is_shift_open  # Возвращаем статус смены
+            'is_shift_open': is_shift_open,  # Возвращаем статус смены
+            'start_time': start_time  # Возвращаем время начала смены
         }, status=status.HTTP_200_OK)
 
     def get_total_time_today(self, user):
