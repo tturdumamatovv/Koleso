@@ -17,7 +17,7 @@ from apps.pages.models import (
     OrderTypes,
     MainPage,
     Stories,
-    Story
+    Story, PaymentSettings
 )
 
 
@@ -115,6 +115,11 @@ class MethodsOfPaymentInline(TabularInline):
 class MainPageAdmin(ModelAdmin):
     list_display = ('phone', 'icon', 'meta_title', 'meta_description', 'meta_image')
     inlines = [OrderTypesInline, DeliveryConditionsInline, MethodsOfPaymentInline]
+
+
+@admin.register(PaymentSettings)
+class PaymentSettingsAdmin(admin.ModelAdmin):
+    list_display = ['merchant_id', 'paybox_url']
 
 
 # class StoryInline(TabularInline):

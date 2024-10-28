@@ -305,3 +305,17 @@ class StoriesUserCheck(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='stories_user_check')
     stories = models.ForeignKey(Stories, on_delete=models.CASCADE, related_name='stories_user_check')
     created_at = models.DateTimeField(verbose_name="Дата создания", auto_now_add=True, blank=True, null=True)
+
+
+class PaymentSettings(SingletonModel):
+    paybox_url = models.URLField(verbose_name=_("Paybox URL"))
+    merchant_id = models.CharField(max_length=100, verbose_name=_("Merchant ID"))
+    merchant_secret = models.CharField(max_length=100, verbose_name=_("Merchant Secret"))
+    merchant_secret_payout = models.CharField(max_length=100, verbose_name=_("Merchant Secret Payout"))
+
+    class Meta:
+        verbose_name = _("Payment Setting")
+        verbose_name_plural = _("Payment Settings")
+
+    def __str__(self):
+        return f"Payment Settings ({self.merchant_id})"

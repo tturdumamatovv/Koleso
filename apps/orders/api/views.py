@@ -37,10 +37,16 @@ from ..freedompay import generate_signature
 from ..permissions import IsCollector
 from ...product.models import ProductSize
 
-PAYBOX_URL = config('PAYBOX_URL')
-PAYBOX_MERCHANT_ID = config('PAYBOX_MERCHANT_ID')
-PAYBOX_MERCHANT_SECRET = config('PAYBOX_MERCHANT_SECRET')
-PAYBOX_MERCHANT_SECRET_PAYOUT = config('PAYBOX_MERCHANT_SECRET_PAYOUT')
+from apps.pages.models import PaymentSettings
+
+# Загрузка настроек
+payment_settings = PaymentSettings.objects.first()
+if payment_settings:
+    PAYBOX_URL = payment_settings.paybox_url
+    PAYBOX_MERCHANT_ID = payment_settings.merchant_id
+else:
+    PAYBOX_URL = ''
+    PAYBOX_MERCHANT_ID = ''
 
 
 class ListOrderView(generics.ListAPIView):
@@ -186,11 +192,15 @@ class CreateOrderView(generics.CreateAPIView):
         if bot_token_instance:
             self.send_order(bot_token_instance, message, nearest_restaurant)
 
+        payment_settings = PaymentSettings.objects.first()
+        if not payment_settings:
+            return Response({"error": "Payment settings not configured."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         # If payment method is card, generate payment link using FreedomPay
         if payment_method == "card":
             email = user.email
             phone_number = user.phone_number
-            payment_url = self.create_freedompay_payment(order, email, phone_number)
+            payment_url = self.create_freedompay_payment(order, email, phone_number, payment_settings)
 
             if not payment_url:
                 return Response({"error": "Failed to create payment link."},
@@ -232,12 +242,12 @@ class CreateOrderView(generics.CreateAPIView):
                     nearest_restaurant = restaurant
         return min_distance, nearest_restaurant
 
-    def create_freedompay_payment(self, order, email, phone_number):
-        url = f"{PAYBOX_URL}/init_payment.php"
+    def create_freedompay_payment(self, order, email, phone_number, payment_settings):
+        url = f"{payment_settings.paybox_url}/init_payment.php"
         amount = order.total_amount
         order_id = order.id
         params = {
-            'pg_merchant_id': PAYBOX_MERCHANT_ID,
+            'pg_merchant_id': payment_settings.merchant_id,
             'pg_order_id': order_id,
             'pg_amount': amount,
             'pg_currency': 'KGS',

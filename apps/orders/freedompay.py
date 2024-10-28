@@ -1,7 +1,5 @@
 import hashlib
-from decouple import config
-
-PAYBOX_MERCHANT_SECRET = config('PAYBOX_MERCHANT_SECRET')
+from apps.pages.models import PaymentSettings
 
 def make_flat_params_array(arr_params, parent_name=''):
     flat_params = {}
@@ -17,7 +15,12 @@ def make_flat_params_array(arr_params, parent_name=''):
 
 
 def generate_signature(request, script_name):
-    secret_key = PAYBOX_MERCHANT_SECRET
+    # Получаем настройки платежа
+    payment_settings = PaymentSettings.objects.first()
+    if not payment_settings:
+        raise ValueError("Payment settings are not configured.")
+
+    secret_key = payment_settings.merchant_secret
     flat_request = make_flat_params_array(request)
     ksorted_request = dict(sorted(flat_request.items()))
     values_list = [script_name] + list(ksorted_request.values()) + [secret_key]
