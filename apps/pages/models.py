@@ -26,7 +26,7 @@ class SingletonModel(models.Model):
 class MainPage(SingletonModel):
     icon = models.ImageField(
         upload_to="images/icons",
-        verbose_name=_("Иконка"),
+        verbose_name=_("Логотип"),
         help_text=_("Иконка для главной страницы.")
     )
     phone = models.CharField(
