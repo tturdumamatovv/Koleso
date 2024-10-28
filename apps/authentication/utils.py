@@ -1,34 +1,33 @@
 import requests
 import uuid
 import random
-
 from django.conf import settings
-
 from xml.etree import ElementTree as ET
-from decouple import config
-
+from apps.pages.models import SMSSettings  # Импортируйте вашу модель
 
 def generate_confirmation_code():
     confirmation_code = ''.join(random.choices('0123456789', k=4))
     print(confirmation_code)
     return confirmation_code
 
-
 def send_sms(phone_number, confirmation_code):
-    login = config('login_nikita')
-    password = config('password_nikita')
-    print(login, password)
+    # Получаем настройки SMS
+    sms_settings = SMSSettings.objects.first()
+    if not sms_settings:
+        raise ValueError("SMS settings are not configured.")
+
+    login = sms_settings.login
+    password = sms_settings.password
+    sender = sms_settings.sender
     transaction_id = str(uuid.uuid4())
-    sender = config('sender_nikita')
-    text = f'Your confirmation code id: {confirmation_code}'
+    text = f'Your confirmation code is: {confirmation_code}'
 
     request_body = ET.Element("message")
     ET.SubElement(request_body, "login").text = login
     ET.SubElement(request_body, "pwd").text = password
     ET.SubElement(request_body, "id").text = transaction_id
     ET.SubElement(request_body, "sender").text = sender
-    message_send = f"Ваш код подтверждения: {confirmation_code}"
-    ET.SubElement(request_body, "text").text = message_send
+    ET.SubElement(request_body, "text").text = text
     phones_element = ET.SubElement(request_body, "phones")
     ET.SubElement(phones_element, "phone").text = phone_number
     print(phone_number)

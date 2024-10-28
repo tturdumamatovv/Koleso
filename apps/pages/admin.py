@@ -17,7 +17,10 @@ from apps.pages.models import (
     OrderTypes,
     MainPage,
     Stories,
-    Story, PaymentSettings
+    Story,
+    PaymentSettings,
+    SMSSettings
+
 )
 
 
@@ -121,6 +124,10 @@ class MainPageAdmin(ModelAdmin):
 class PaymentSettingsAdmin(ModelAdmin):
     list_display = ['merchant_id', 'paybox_url']
 
+
+@admin.register(SMSSettings)
+class SMSSettingsAdmin(admin.ModelAdmin):
+    list_display = ['login', 'sender']
 
 # class StoryInline(TabularInline):
 #     extra = 0

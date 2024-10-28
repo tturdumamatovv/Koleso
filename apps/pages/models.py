@@ -308,14 +308,27 @@ class StoriesUserCheck(models.Model):
 
 
 class PaymentSettings(SingletonModel):
-    paybox_url = models.URLField(verbose_name=_("Paybox URL"))
-    merchant_id = models.CharField(max_length=100, verbose_name=_("Merchant ID"))
-    merchant_secret = models.CharField(max_length=100, verbose_name=_("Merchant Secret"))
-    merchant_secret_payout = models.CharField(max_length=100, verbose_name=_("Merchant Secret Payout"))
+    paybox_url = models.URLField(verbose_name=_("FreedomPay Ссылка"))
+    merchant_id = models.CharField(max_length=100, verbose_name=_("ID магазина"))
+    merchant_secret = models.CharField(max_length=100, verbose_name=_("Секретный ключ магазины"))
+    merchant_secret_payout = models.CharField(max_length=100, verbose_name=_("Секретный ключ магазина для выплаты"))
 
     class Meta:
-        verbose_name = _("Payment Setting")
-        verbose_name_plural = _("Payment Settings")
+        verbose_name = _("Настройка платежа")
+        verbose_name_plural = _("Настройки платежа")
 
     def __str__(self):
         return f"Payment Settings ({self.merchant_id})"
+
+
+class SMSSettings(models.Model):
+    login = models.CharField(max_length=100, verbose_name=_("Логин"))
+    password = models.CharField(max_length=100, verbose_name=_("Пароль"))
+    sender = models.CharField(max_length=100, verbose_name=_("Отправитель"))
+
+    class Meta:
+        verbose_name = _("Настройка SMS-сообщений")
+        verbose_name_plural = _("Настройки SMS-сообщений")
+
+    def __str__(self):
+        return self.sender
