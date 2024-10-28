@@ -118,7 +118,7 @@ class MainPageAdmin(ModelAdmin):
 
 
 @admin.register(PaymentSettings)
-class PaymentSettingsAdmin(admin.ModelAdmin):
+class PaymentSettingsAdmin(ModelAdmin):
     list_display = ['merchant_id', 'paybox_url']
 
 
