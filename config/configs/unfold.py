@@ -240,6 +240,11 @@ UNFOLD = {
                         "icon": "settings",
                         "link": reverse_lazy("admin:orders_distancepricing_changelist"),
                     },
+                    {
+                        "title": _("FreedomPay"),
+                        "icon": "money",
+                        "link": reverse_lazy("admin:pages_paymentsettings_changelist"),
+                    },
                 ],
             },
 {
