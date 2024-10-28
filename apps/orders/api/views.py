@@ -37,16 +37,16 @@ from ..freedompay import generate_signature
 from ..permissions import IsCollector
 from ...product.models import ProductSize
 
-from apps.pages.models import PaymentSettings
+# from apps.pages.models import PaymentSettings
 
 # Загрузка настроек
-payment_settings = PaymentSettings.objects.first()
-if payment_settings:
-    PAYBOX_URL = payment_settings.paybox_url
-    PAYBOX_MERCHANT_ID = payment_settings.merchant_id
-else:
-    PAYBOX_URL = ''
-    PAYBOX_MERCHANT_ID = ''
+# payment_settings = PaymentSettings.objects.first()
+# if payment_settings:
+#     PAYBOX_URL = payment_settings.paybox_url
+#     PAYBOX_MERCHANT_ID = payment_settings.merchant_id
+# else:
+#     PAYBOX_URL = ''
+#     PAYBOX_MERCHANT_ID = ''
 
 
 class ListOrderView(generics.ListAPIView):
