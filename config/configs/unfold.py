@@ -245,6 +245,11 @@ UNFOLD = {
                         "icon": "money",
                         "link": reverse_lazy("admin:pages_paymentsettings_changelist"),
                     },
+                    {
+                        "title": _("NikitaSMS"),
+                        "icon": "sms",
+                        "link": reverse_lazy("admin:pages_smssettings_changelist"),
+                    },
                 ],
             },
 {
