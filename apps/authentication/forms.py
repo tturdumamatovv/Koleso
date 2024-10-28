@@ -14,6 +14,12 @@ class UserCreationForm(forms.ModelForm):
         model = User
         fields = ('phone_number', 'full_name', 'role')
 
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if not phone_number.startswith('+996'):
+            raise forms.ValidationError("Номер телефона должен начинаться с '+996'.")
+        return phone_number
+
     def save(self, commit=True):
         user = super(UserCreationForm, self).save(commit=False)
         user.set_password(self.cleaned_data["password"])
