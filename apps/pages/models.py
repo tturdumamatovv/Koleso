@@ -321,7 +321,7 @@ class PaymentSettings(SingletonModel):
         return f"Payment Settings ({self.merchant_id})"
 
 
-class SMSSettings(models.Model):
+class SMSSettings(SingletonModel):
     login = models.CharField(max_length=100, verbose_name=_("Логин"))
     password = models.CharField(max_length=100, verbose_name=_("Пароль"))
     sender = models.CharField(max_length=100, verbose_name=_("Отправитель"))
