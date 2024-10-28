@@ -126,7 +126,7 @@ class PaymentSettingsAdmin(ModelAdmin):
 
 
 @admin.register(SMSSettings)
-class SMSSettingsAdmin(admin.ModelAdmin):
+class SMSSettingsAdmin(ModelAdmin):
     list_display = ['login', 'sender']
 
 # class StoryInline(TabularInline):
