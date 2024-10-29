@@ -82,7 +82,7 @@ class ProductSize(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена со скидкой'),
                                            blank=True, null=True)
     bonus_price = models.DecimalField(default=0, max_digits=10, decimal_places=2, verbose_name=_('Цена бонусами'))
-    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
+    quantity = models.FloatField(verbose_name=_('Количество'), default=0)
     unit = models.CharField(max_length=5, choices=UNIT_CHOICES, verbose_name=_('Единица измерения'), default='pcs')
 
     class Meta:
@@ -123,7 +123,7 @@ class Product(models.Model):
     tags = models.ManyToManyField('Tag', related_name='products', verbose_name=_('Теги'), blank=True)
     order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
     is_active = models.BooleanField(default=True, verbose_name=_("Активный Торав"))
-    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
+    quantity = models.FloatField(verbose_name=_('Количество'), default=0)
     unit = models.CharField(max_length=5, choices=ProductSize.UNIT_CHOICES, verbose_name=_('Единица измерения'),
                             default='pcs')
 
