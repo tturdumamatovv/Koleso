@@ -16,10 +16,6 @@ class ProductSizeForm(forms.ModelForm):
             self.fields['size'].widget.attrs['readonly'] = True
             self.fields['size'].label = 'Размер'  # Убедитесь, что заголовок установлен правильно
 
-        # Настройка поля quantity для поддержки дробных значений
-        if 'quantity' in self.fields:
-            self.fields['quantity'].widget.attrs.update({'step': '0.01'})  # Устанавливаем шаг для дробных значений
-
         if 'product' in self.initial:
             product = self.initial['product']
         elif 'product' in self.data:
@@ -36,7 +32,3 @@ class ProductAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Фильтруем категории, оставляя только конечные (без подкатегорий)
         self.fields['category'].queryset = Category.objects.filter(children__isnull=True)
-
-        # Настройка поля quantity для поддержки дробных значений
-        if 'quantity' in self.fields:
-            self.fields['quantity'].widget.attrs.update({'step': '0.01'})
