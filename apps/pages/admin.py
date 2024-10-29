@@ -62,10 +62,7 @@ class BannerAdmin(ModelAdmin):
 
 @admin.register(StaticPage)
 class StaticPageAdmin(ModelAdmin, TabbedTranslationAdmin):
-    exclude = [
-        'title',
-        'description',
-    ]
+    pass
 
 
 class PhoneInline(TabularInline):
