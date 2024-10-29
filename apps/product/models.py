@@ -101,6 +101,14 @@ class ProductSize(models.Model):
         self.size = f"{self.quantity} {unit_mapping[self.unit]}"  # Используем русское значение
         super().save(*args, **kwargs)
 
+    def clean(self):
+        super().clean()
+        # Логика проверки
+        if self.unit in ['l', 'ml'] and self.product.unit == 'kg':
+            raise ValidationError(_('Нельзя выбрать литры или миллилитры для продукта, который измеряется в килограммах.'))
+        if self.unit in ['kg', 'g'] and self.product.unit in ['l', 'ml']:
+            raise ValidationError(_('Нельзя выбрать килограммы или граммы для продукта, который измеряется в литрах.'))
+
 
 class Product(models.Model):
     is_popular = models.BooleanField(default=False, verbose_name=_('Популярный'))
@@ -141,15 +149,6 @@ class Product(models.Model):
     def get_min_price(self):
         prices = [size.discounted_price if size.discounted_price else size.price for size in self.product_sizes.all()]
         return min(prices) if prices else None
-
-    def clean(self):
-        super().clean()
-        if self.unit in ['kg', 'g']:
-            if self.category and self.category.unit in ['l', 'ml']:
-                raise ValidationError(_('Нельзя выбрать единицы измерения "л" или "мл" для продукта с "кг" или "гр".'))
-        elif self.unit in ['l', 'ml']:
-            if self.category and self.category.unit in ['kg', 'g']:
-                raise ValidationError(_('Нельзя выбрать единицы измерения "кг" или "гр" для продукта с "л" или "мл".'))
 
     def save(self, *args, **kwargs):
         # Проверка на привязку к конечной категории
