@@ -142,6 +142,15 @@ class Product(models.Model):
         prices = [size.discounted_price if size.discounted_price else size.price for size in self.product_sizes.all()]
         return min(prices) if prices else None
 
+    def clean(self):
+        super().clean()
+        if self.unit in ['kg', 'g']:
+            if self.category and self.category.unit in ['l', 'ml']:
+                raise ValidationError(_('Нельзя выбрать единицы измерения "л" или "мл" для продукта с "кг" или "гр".'))
+        elif self.unit in ['l', 'ml']:
+            if self.category and self.category.unit in ['kg', 'g']:
+                raise ValidationError(_('Нельзя выбрать единицы измерения "кг" или "гр" для продукта с "л" или "мл".'))
+
     def save(self, *args, **kwargs):
         # Проверка на привязку к конечной категории
         if self.category and self.category.get_children().exists():
