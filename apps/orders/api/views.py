@@ -130,7 +130,6 @@ class CreateOrderView(generics.CreateAPIView):
         # Подсчет общей суммы заказа
         total_amount = Decimal(0)
 
-        # Пробегаем по каждому элементу заказа
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
             ordered_quantity = Decimal(item.get('quantity'))  # Используем Decimal
@@ -159,7 +158,7 @@ class CreateOrderView(generics.CreateAPIView):
                     )
 
                 # Уменьшение количества товара в модели Product
-                product.quantity -= quantity_in_kg
+                product.quantity = product.quantity - quantity_in_kg  # Используем Decimal для корректного вычитания
                 product.save()  # Сохраняем изменения в Product
 
                 # Рассчитываем стоимость для текущей позиции
