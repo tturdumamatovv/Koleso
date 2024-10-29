@@ -145,11 +145,11 @@ class CreateOrderView(generics.CreateAPIView):
                 elif product_size.unit == 'kg':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = ordered_quantity / 1000  # 500 мл = 0.5 кг (для жидкостей)
+                    quantity_in_kg = ordered_quantity / 1000  # Предположим, что 1 л = 1 кг (для жидкостей)
                 elif product_size.unit == 'l':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
-                else:  # Для штук (pcs), учитываем, что 1 шт - это 1 (если это единичный продукт)
-                    quantity_in_kg = ordered_quantity  # здесь нужно уточнить, если 1 шт = определенному количеству в кг
+                else:  # Для штук (pcs), если 1 шт. = 1 кг, это нужно будет определить
+                    quantity_in_kg = ordered_quantity  # Например, если 1 шт. = 1 кг
 
                 # Проверка на достаточное количество в модели Product
                 if product.quantity < quantity_in_kg:
