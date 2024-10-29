@@ -12,7 +12,10 @@ from .views import (
     CourierOrderDeliverListView,
     CourierCompleteOrderView,
     CourierOrderHistoryView,
-    CollectorOrderHistoryView
+    CollectorOrderHistoryView,
+    get_user_orders,
+    get_order_details
+
 )
 
 urlpatterns = [
@@ -29,5 +32,7 @@ urlpatterns = [
     path('courier/order/<int:pk>/complete/', CourierCompleteOrderView.as_view(), name='courier-complete-order'),
     path('courier/orders/history/', CourierOrderHistoryView.as_view(), name='courier-order-history'),
     path('collector/orders/history/', CollectorOrderHistoryView.as_view(), name='collector-order-history'),
+    path('user/orders/', get_user_orders, name='user_orders'),
+    path('details/', get_order_details, name='get_order_details'),
 ]
 

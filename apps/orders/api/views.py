@@ -2,12 +2,16 @@ import requests
 
 from datetime import datetime
 from decimal import Decimal
-from decouple import config
+
+from django.http import JsonResponse
+from django.utils.timezone import localtime
+from django.shortcuts import get_object_or_404
 
 import xml.etree.ElementTree as ET
 
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.renderers import JSONRenderer
 
 from apps.authentication.models import UserAddress, BlacklistedAddress
 from apps.orders.models import (
@@ -62,6 +66,35 @@ class ListOrderView(generics.ListAPIView):
             'request': self.request
         })
         return context
+
+def get_user_orders(request):
+    user_id = request.GET.get('user_id')
+    orders = Order.objects.filter(user_id=user_id).values(
+        'id', 'order_time', 'total_amount', 'order_status'
+    ).order_by('-id')
+    for order in orders:
+        order['order_time'] = localtime(order['order_time']).strftime('%d/%m/%Y, %H:%M')
+        order['order_status'] = dict(Order._meta.get_field('order_status').choices)[order['order_status']]
+
+    return JsonResponse({'orders': list(orders)}, safe=False)
+
+
+def get_order_details(request):
+    order_id = request.GET.get('order_id')
+    try:
+        order = get_object_or_404(Order, id=order_id)
+
+        # Используем сериализатор для преобразования данных заказа
+        serializer = OrderListSerializer(order, context={'request': request})
+
+        # Преобразуем сериализованные данные в JSON
+        order_data = JSONRenderer().render(serializer.data)
+
+        return JsonResponse(serializer.data, safe=False)
+    except Order.DoesNotExist:
+        return JsonResponse({'error': 'Order not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 class CreateOrderView(generics.CreateAPIView):

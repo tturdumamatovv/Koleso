@@ -1,5 +1,11 @@
 from django.urls import path
-from .views import ChatListView, SendMessageView, GetChatIdView, CreateChatView
+from .views import (
+    ChatListView,
+    SendMessageView,
+    GetChatIdView,
+    CreateChatView,
+    mark_messages_as_read
+)
 
 urlpatterns = [
     # URL для получения списка чатов
@@ -10,4 +16,5 @@ urlpatterns = [
     path('get-chat-id/', GetChatIdView.as_view(), name='get-chat-id'),
 
     path('create-chat/', CreateChatView.as_view(), name='create-chat'),
+    path('mark-as-read/<int:chat_id>/', mark_messages_as_read, name='mark_messages_as_read'),
 ]

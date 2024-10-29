@@ -6,9 +6,9 @@ from apps.chat.models import Chat, Message
 from .serializers import ChatSerializer, MessageSerializer
 from ...authentication.models import User
 
-from django.utils import timezone
+from django.shortcuts import render
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from config import settings
 
 
 class ChatListView(generics.ListAPIView):
@@ -135,3 +135,42 @@ class CreateChatView(generics.GenericAPIView):
         )
 
         return Response({"chat_id": chat.id}, status=status.HTTP_201_CREATED)
+
+
+def mark_messages_as_read(request, chat_id):
+    if request.method == "POST":
+        # Получаем все непрочитанные сообщения для данного чата
+        messages = Message.objects.filter(chat_id=chat_id, is_read=False)
+
+        # Помечаем сообщения как прочитанные и считаем количество обновленных сообщений
+        count = messages.update(is_read=True)
+
+        return JsonResponse({"status": "success", "count": count})
+    return JsonResponse({"status": "error"}, status=400)
+
+
+def user_list_view(request):
+    # Получаем всех пользователей
+    users = settings.AUTH_USER_MODEL.objects.all()
+
+    # Создаем словарь для хранения количества непрочитанных сообщений
+    user_new_messages_count = {}
+
+    # Перебираем пользователей и подсчитываем непрочитанные сообщения
+    for user in users:
+        # Получаем чаты, в которых пользователь участвует
+        chats = Chat.objects.filter(user=user)
+        unread_count = 0
+
+        # Подсчитываем непрочитанные сообщения в каждом чате
+        for chat in chats:
+            unread_count += Message.objects.filter(chat=chat, is_read=False).count()
+
+        # Сохраняем количество непрочитанных сообщений
+        user_new_messages_count[user.id] = unread_count
+
+    # Передаем пользователей и количество непрочитанных сообщений в шаблон
+    return render(request, 'admin/custom_admin.html', {
+        'users': users,
+        'user_new_messages_count': user_new_messages_count,
+    })

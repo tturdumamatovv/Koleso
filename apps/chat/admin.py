@@ -18,7 +18,7 @@ class ChatAdmin(ModelAdmin):
         extra_context['users'] = users
         extra_context['chats'] = chats
         extra_context['admin_id'] = admin_user.id if admin_user else None
-        return TemplateResponse(request, self.change_list_template, extra_context)
+        return super(ChatAdmin, self).changelist_view(request, extra_context=extra_context)
 
 
 admin.site.register(Chat, ChatAdmin)

@@ -1,56 +1,181 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
+{% csrf_token %}
+{% load custom_tags %}
 
-  <!-- Основной контейнер для чата -->
-  <div style="display: flex; height: 90vh; border: 1px solid #ccc; border-radius: 10px; overflow: hidden;">
-
-    <!-- Левая колонка со списком пользователей -->
-    <div id="user-list" style="width: 30%; background-color: #2b2b2b; padding: 10px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;">
-      {% for user in users %}
-        <div class="user-item" data-user-id="{{ user.id }}" data-user-name="{{ user.full_name|default:user.phone_number }}" style="padding: 15px; margin-bottom: 5px; background-color: #3b3b3b; color: white; border-radius: 8px; cursor: pointer;">
-          <div>{{ user.full_name|default:user.phone_number }}</div>
+  <!-- Main Container -->
+  <div style="display: flex; height: 90vh; background-color: #f8fafc; font-family: system-ui, -apple-system, sans-serif;">
+    <!-- Left Sidebar - User List -->
+    <div id="user-list" style="width: 320px; background-color: white; border-right: 1px solid #e2e8f0;">
+      <!-- Header -->
+      <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; background-color: white;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+          <h1 style="font-size: 20px; font-weight: 600; color: #1e293b;">Customer Chats</h1>
         </div>
-      {% endfor %}
-    </div>
-
-    <!-- Правая колонка с чатом -->
-    <div id="chat-box-container" style="flex-grow: 1; padding: 10px; background-color: #1e1e1e; color: #fff; border-left: 1px solid #444; display: flex; flex-direction: column;">
-
-      <!-- Здесь будет отображаться имя пользователя или номер телефона -->
-      <div id="chat-user-header" style="padding: 10px; background-color: #2b2b2b; color: #fff; font-weight: bold; margin-bottom: 10px; border-radius: 8px; text-align: center;">
-        Выберите пользователя
+        <div style="position: relative;">
+          <input type="text" placeholder="Search customers..."
+                 style="width: 100%; padding: 10px 16px; padding-left: 36px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; color: #1e293b;">
+          <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
       </div>
 
-      <!-- Чат -->
-      <div id="chat-box" style="flex-grow: 1; overflow-y: auto; background-color: #2b2b2b; padding: 10px; border-radius: 10px; border: 1px solid #444; scrollbar-width: none; -ms-overflow-style: none;"></div>
+      <!-- User List -->
+<div style="overflow-y: auto; height: calc(90vh - 100px);">
+  {% for user in users %}
+    <div class="user-item" data-user-id="{{ user.id }}" data-user-phone="{{ user.phone_number }}" data-user-name="{{ user.full_name|default:user.phone_number }}"
+         style="padding: 16px; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: all 0.2s;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <!-- User Avatar -->
+        <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 16px;">
+          {{ user.full_name|default:user.phone_number|slice:":1"|upper }}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <span style="font-weight: 500; color: #1e293b; font-size: 14px;">
+              {{ user.full_name|default:user.phone_number }}
+            </span>
+            {% if user_new_messages_count|get_item:user.id|default:0 > 0 %}
+            <span class="new-messages-count">
+              {{ user_new_messages_count|get_item:user.id|default:0 }}
+            </span>
+            {% else %}
+              <span class="new-messages-count" style="display: none;">0</span>
+            {% endif %}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              {{ user.phone_number }}
+            </span>
+            <div style="width: 8px; height: 8px; background-color: #22c55e; border-radius: 50%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+    </div>
 
-      <!-- Ввод сообщения и загрузка изображения -->
-      <div class="message-input" style="display: flex; align-items: center; margin-top: 10px;">
-        <textarea id="message-box" placeholder="Напишите сообщение..." style="width: 100%; height: 50px; margin-right: 10px; border-radius: 5px; border: 1px solid #444; padding: 10px; background-color: #3b3b3b; color: white; resize: none;"></textarea>
+    <!-- Main Chat Area -->
+    <div id="chat-box-container" style="flex: 1; display: flex; flex-direction: column; min-width: 0; background-color: white;">
+      <!-- Chat Header -->
+      <div id="chat-user-header" style="padding: 16px 24px; background-color: white; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            Select a user to start chatting
+          </div>
+          <button id="show-customer-info" style="padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: white; color: #1e293b; font-size: 14px; display: none;">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
-        <!-- Поле для загрузки изображения -->
-        <input type="file" id="image-upload" accept="image/*" style="margin-right: 10px;" />
+      <!-- Messages Area -->
+      <div id="chat-box" style="flex: 1; overflow-y: auto; padding: 24px; background-color: #f8fafc;"></div>
 
-        <button id="send-button" style="height: 50px; background-color: #0066cc; color: white; border: none; padding: 0 20px; border-radius: 5px; cursor: pointer;">Отправить</button>
+      <!-- Input Area -->
+      <div class="message-input" style="padding: 16px 24px; background-color: white; border-top: 1px solid #e2e8f0;">
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <label style="cursor: pointer;">
+            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+            <div style="padding: 8px; border-radius: 8px; background-color: #f8fafc; transition: all 0.2s;">
+              <svg style="width: 22px; height: 22px; color: #64748b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </label>
+
+          <textarea id="message-box" placeholder="Type your message..."
+                    style="flex: 1; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; font-size: 14px; resize: none; min-height: 44px; max-height: 120px;"></textarea>
+
+          <button id="send-button" style="padding: 10px 20px; background-color: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+            Send
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Модальное окно для изображения -->
-    <div id="image-modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
-      <span id="close-modal" style="position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; cursor: pointer;">&times;</span>
-      <img id="modal-image" style="margin: auto; display: block; max-width: 80%; max-height: 80%;" />
-    </div>
+    <!-- Customer Info Sidebar -->
+    <div id="customer-info-sidebar" style="width: 320px; background-color: white; border-left: 1px solid #e2e8f0; display: none;">
+      <div style="padding: 20px; border-bottom: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="font-size: 18px; font-weight: 600; color: #1e293b;">Customer Info</h2>
+          <button id="close-customer-info" style="padding: 8px; border: none; background: none; cursor: pointer;">
+            <svg style="width: 20px; height: 20px; color: #64748b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
+        <!-- Tabs -->
+        <div class="tabs" style="display: flex; gap: 2px; background-color: #f1f5f9; padding: 4px; border-radius: 8px;">
+          <button class="tab active" data-tab="profile"
+                  style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+            Profile
+          </button>
+          <button class="tab" data-tab="orders"
+                  style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+            Orders
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Contents -->
+      <div id="profile-content" class="tab-content" style="padding: 20px;">
+        <div style="background-color: #f8fafc; border-radius: 8px; padding: 16px;">
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 4px;">Full Name</div>
+            <div id="info-name" style="font-size: 15px; color: #1e293b;">-</div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 4px;">ID</div>
+            <div id="info-id" style="font-size: 15px; color: #1e293b;">-</div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 4px;">Phone</div>
+            <div id="info-phone" style="font-size: 15px; color: #1e293b;">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="orders-content" class="tab-content" style="display: none; padding: 20px;">
+        <div id="user-orders">
+
+        </div>
+      </div>
+      <div id="order-detail-modal" style="">
+          <div id="min">
+              <button id="close-order-modal" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+              <h3 style="margin-bottom: 20px;">Детали заказа #<span id="order-id"></span></h3>
+              <div id="order-details-content">
+                  <!-- Здесь будут показаны детали заказа -->
+              </div>
+          </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Подключение Firebase SDK -->
+  <!-- Image Modal -->
+  <div id="image-modal" style="display: none; position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.75); z-index: 50;">
+    <button id="close-modal" style="position: fixed; top: 24px; right: 24px; background: white; width: 40px; height: 40px; border-radius: 8px; border: none; cursor: pointer;">
+      <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+    <img id="modal-image" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 90%; max-height: 90%; object-fit: contain; border-radius: 8px;" />
+  </div>
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-storage.js"></script>
 
   <script>
-    // Инициализация Firebase
+    // Firebase Configuration
     var firebaseConfig = {
       apiKey: "AIzaSyBqsNaYF7zyMBQfRmaCkim7juLnuNyuXm4",
       authDomain: "koleso-1bdb1.firebaseapp.com",
@@ -70,13 +195,12 @@
     var adminId = {{ admin_id }};
     var selectedChatId = null;
 
-    // Подписка на все чаты при загрузке страницы
+    // Initial subscriptions
     subscribeToAllChats();
 
     function subscribeToAllChats() {
-      console.log("Подписка на все чаты");
+      console.log("Subscribing to all chats");
       let userIds = [{% for user in users %} {{ user.id }}, {% endfor %}];
-
       userIds.forEach(function(userId) {
         fetchChatId(userId).then(function(chatId) {
           if (chatId) {
@@ -86,135 +210,340 @@
       });
     }
 
-    // Логика выбора пользователя
-    document.querySelectorAll('.user-item').forEach(function(item) {
-      item.addEventListener('click', function() {
-        document.querySelectorAll('.user-item').forEach(function(user) {
-          user.style.backgroundColor = '#3b3b3b';
-        });
-        this.style.backgroundColor = '#0066cc';
-        selectedUserId = Number(this.getAttribute('data-user-id'));
-        var userNameOrPhone = this.getAttribute('data-user-name');
-        document.getElementById('chat-user-header').innerText = userNameOrPhone;
-        loadMessages(selectedUserId);
-      });
-    });
-
-    // Функция загрузки сообщений
-    function loadMessages(userId) {
-      fetchChatId(userId).then(function(chatId) {
-        if (chatId) {
-          selectedChatId = chatId;
-          subscribeToChat(chatId, userId);
-        } else {
-          selectedChatId = null;
-          document.getElementById('chat-box').innerHTML = 'Нет сообщений. Начните новый чат.';
-        }
-      });
-    }
-
-    // Функция проверки, существует ли чат
     function fetchChatId(userId) {
       return fetch(`/api/v2/chat/get-chat-id/?user_id=${userId}&admin_id=${adminId}`)
         .then(response => response.json())
         .then(data => {
-          console.log("Полученный chat_id:", data.chat_id); // Лог для проверки
+          console.log("Received chat_id:", data.chat_id);
           return data.chat_id || null;
         });
     }
 
-    // Подписка на сообщения в реальном времени для конкретного чата
+    function updateNewMessagesCount(userId, count) {
+      const userItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+      if (userItem) {
+        const newMessagesCountElement = userItem.querySelector('.new-messages-count');
+        if (newMessagesCountElement) {
+          newMessagesCountElement.textContent = count;
+          newMessagesCountElement.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+      }
+    }
+
+
+     function resetNewMessagesCount(userId) {
+      const userItem = document.querySelector(`.user-item[data-user-id="${userId}"]`);
+      if (userItem) {
+        const newMessagesCountElement = userItem.querySelector('.new-messages-count');
+        if (newMessagesCountElement) {
+          newMessagesCountElement.textContent = 0;  // Сбрасываем текст
+          newMessagesCountElement.style.display = 'none';  // Скрываем элемент
+        }
+      }
+    }
+
+    function markMessagesAsRead(chatId) {
+      db.collection('chats').doc(chatId).collection('messages')
+        .where('recipient_id', '==', adminId)  // Фильтруем сообщения для админа
+        .where('is_read', '==', false)  // Только непрочитанные
+        .get()
+        .then(function(querySnapshot) {
+          querySnapshot.forEach(function(doc) {
+            doc.ref.update({ is_read: true });  // Обновляем статус прочтения
+          });
+        })
+        .catch(function(error) {
+          console.error("Ошибка при обновлении статуса сообщений:", error);
+        });
+    }
+
+
     function subscribeToChat(chatId, userId) {
       if (!chatId) return;
-      console.log("Подписка на чат с ID:", chatId);
-      console.log("Тип chatId:", typeof chatId);  // Добавьте этот лог
 
-      chatId = chatId.toString(); // Приводим к строке, если это необходимо
+      chatId = chatId.toString();
       db.collection('chats').doc(chatId).collection('messages')
         .orderBy('timestamp')
         .onSnapshot(function(querySnapshot) {
           let messages = [];
+          let newMessagesCount = 0;  // Счетчик новых сообщений
           querySnapshot.forEach(function(doc) {
-            var messageData = doc.data();
+            const messageData = doc.data();
             messages.push(messageData);
+            if (!messageData.is_read && messageData.sender_id !== adminId) {
+              newMessagesCount++;  // Увеличиваем счетчик для новых сообщений
+            }
           });
+
           if (userId === selectedUserId) {
             document.getElementById('chat-box').innerHTML = '';
             messages.forEach(messageData => displayMessage(messageData));
             document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+
+            // Сбрасываем новые сообщения после открытия чата
+            resetNewMessagesCount(userId);
+            // Обновляем статус прочтения сообщений
+            markMessagesAsRead(chatId);
+          } else {
+            updateNewMessagesCount(userId, newMessagesCount);
           }
         });
     }
 
-    // Отображение сообщения в чате
-function displayMessage(messageData) {
-  var chatBox = document.getElementById('chat-box');
-  var messageCover = document.createElement('div');
-  messageCover.style.display = "flex";
-  messageCover.style.flexDirection = "row";
-  messageCover.style.width = "100%";
-  messageCover.classList.add('cover');
+    function displayMessage(messageData) {
+      var chatBox = document.getElementById('chat-box');
+      var messageCover = document.createElement('div');
+      messageCover.style.display = "flex";
+      messageCover.style.width = "100%";
+      messageCover.style.marginBottom = "12px";
 
-  var messageElement = document.createElement('div');
-  messageElement.style.padding = '10px';
-  messageElement.style.borderRadius = '8px';
-  messageElement.style.width = 'fit-content';
-  messageElement.style.color = '#fff';
-  messageCover.appendChild(messageElement);
+      var messageElement = document.createElement('div');
+      messageElement.style.maxWidth = '70%';
+      messageElement.style.padding = '12px 16px';
+      messageElement.style.borderRadius = '12px';
+      messageElement.style.fontSize = '14px';
+      messageElement.style.lineHeight = '1.5';
+      messageElement.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
 
-  // Проверка, если сообщение от админа, отображаем его справа
-  if (messageData.sender_id == adminId) {
-    messageElement.style.backgroundColor = "#0066cc"; // Синий фон для сообщений админа
-    messageCover.style.justifyContent = 'flex-end';  // Сообщения админа справа
-  } else {
-    messageElement.style.backgroundColor = "#3b3b3b"; // Серый фон для сообщений пользователя
-    messageCover.style.justifyContent = 'flex-start';  // Сообщения пользователя слева
-  }
+      if (messageData.sender_id == adminId) {
+        messageCover.style.justifyContent = 'flex-end';
+        messageElement.style.backgroundColor = '#3b82f6';
+        messageElement.style.color = 'white';
+      } else {
+        messageCover.style.justifyContent = 'flex-start';
+        messageElement.style.backgroundColor = 'white';
+        messageElement.style.color = '#1e293b';
+        messageElement.style.border = '1px solid #e2e8f0';
+      }
 
-  var messageContent = `<strong>${messageData.sender_full_name}</strong>: ${messageData.content || ''} <br> <small>${new Date(messageData.timestamp.seconds * 1000).toLocaleString()}</small>`;
+      var messageContent = `
+        <div>${messageData.content || ''}</div>
+        ${messageData.image_url ? `
+          <img src="${messageData.image_url}" alt="Image" class="chat-image"
+               style="max-width: 300px; border-radius: 8px; margin-top: 8px; cursor: pointer;">
+        ` : ''}
+        <div style="font-size: 12px; margin-top: 4px; color: ${messageData.sender_id == adminId ? 'rgba(255,255,255,0.8)' : '#64748b'};">
+          ${new Date(messageData.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </div>
+      `;
 
-  // Проверяем, если есть URL изображения
-  if (messageData.image_url) {
-    messageContent += `<br><img src="${messageData.image_url}" alt="Image" class="chat-image" style="max-width: 200px; border-radius: 8px; margin-top: 10px; cursor: pointer;">`;
-  }
+      messageElement.innerHTML = messageContent;
+      messageCover.appendChild(messageElement);
+      chatBox.appendChild(messageCover);
 
-  messageElement.innerHTML = messageContent;
-  chatBox.appendChild(messageCover);
+      var chatImage = messageElement.querySelector('.chat-image');
+      if (chatImage) {
+        chatImage.addEventListener('click', function() {
+          openImageModal(messageData.image_url);
+        });
+      }
 
-  // Добавляем обработчик для открытия изображения в модальном окне
-  var chatImage = messageElement.querySelector('.chat-image');
-  if (chatImage) {
-    chatImage.addEventListener('click', function() {
-      openImageModal(messageData.image_url);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // User selection handler
+    document.querySelectorAll('.user-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        // Update UI state
+        document.querySelectorAll('.user-item').forEach(function(user) {
+          user.style.backgroundColor = 'white';
+        });
+        this.style.backgroundColor = '#f8fafc';
+
+        selectedUserId = Number(this.getAttribute('data-user-id'));
+        loadUserOrders(selectedUserId);
+        var userNameOrPhone = this.getAttribute('data-user-name');
+        var userNameOrPhone = this.getAttribute('data-user-phone');
+
+        // Show customer info button
+        document.getElementById('show-customer-info').style.display = 'flex';
+
+        // Update header
+        document.getElementById('chat-user-header').innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 500; font-size: 16px;">
+                ${userNameOrPhone.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style="font-weight: 500; color: #1e293b; font-size: 15px;">${userNameOrPhone}</div>
+                <div style="font-size: 13px; color: #64748b;">Online</div>
+              </div>
+            </div>
+            <button id="show-customer-info" onclick="toggleCustomerInfo()" style="padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: white; color: #1e293b; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Customer Info
+            </button>
+          </div>
+        `;
+
+        // Update info panel
+        document.getElementById('info-name').textContent = this.getAttribute('data-user-name');
+        document.getElementById('info-id').textContent = + this.getAttribute('data-user-id');
+        document.getElementById('info-phone').textContent = + this.getAttribute('data-user-phone');
+
+        loadMessages(selectedUserId);
+      });
     });
-  }
+
+function fetchOrderDetails(orderId) {
+  console.log(`Fetching details for order ID: ${orderId}`);
+  fetch(`/api/v1/orders/details/?order_id=${orderId}`)
+    .then(response => response.json())
+    .then(data => {
+      console.log("Received order details:", data);
+      if (data.error) {
+        alert("Error: " + data.error);
+        return;
+      }
+
+      document.getElementById('order-id').textContent = orderId;
+      let orderDetailsContent = `
+        <p><strong>Время заказа:</strong> ${data.order_time || 'N/A'}</p>
+        <p><strong>Общая сумма:</strong> ${data.total_amount || 'N/A'}</p>
+        <p><strong>Способ оплаты:</strong> ${data.payment_method || 'N/A'}</p>
+        <p><strong>Статус заказа:</strong> <span class="status-${data.order_status}">${data.order_status || 'N/A'}</span></p>
+        <p><strong>Самовывоз:</strong> ${data.is_pickup ? 'Да' : 'Нет'}</p>
+        <p><strong>Сдача:</strong> ${data.change || 'Нет'}</p>
+        <p><strong>Комментарии:</strong> ${data.comment || 'Нет комментариев'}</p>
+        <p><strong>Адрес доставки:</strong> ${data.user_address || 'Самовывоз'}</p>
+        <p><strong>Бонусные баллы:</strong> ${data.total_bonus_amount || 'Нет бонусов'}</p>
+        <p><strong>Источник заказа:</strong> ${data.order_source || 'N/A'}</p>
+      `;
+
+      if (data.order_items && data.order_items.length > 0) {
+  orderDetailsContent += '<h4>Товары:</h4>';
+  data.order_items.forEach(item => {
+    // Проверка наличия объекта product и его свойства name
+    if (item.product && item.product.name) {
+      orderDetailsContent += `
+        <div style="border: 1px solid #e2e8f0; padding: 10px; margin-bottom: 10px;">
+          <p><strong>Товар:</strong> ${item.product.name}</p>
+          ${item.product.image ? `<img src="${item.product.image}" alt="${item.product.name}" style="max-width: 100px; margin-right: 10px;">` : ''}
+          <p><strong>Количество:</strong> ${item.quantity}</p>
+          <p><strong>Цена:</strong> ${item.product.price || 'N/A'} сом.</p>
+          <p><strong>Размер:</strong> ${item.size?.name || 'Не указано'}</p>
+        </div>
+      `;
+    } else {
+      orderDetailsContent += `
+        <div style="border: 1px solid #e2e8f0; padding: 10px; margin-bottom: 10px;">
+          <p><strong>Товар:</strong> Информация отсутствует</p>
+        </div>
+      `;
+    }
+  });
+}
+
+      document.getElementById('order-details-content').innerHTML = orderDetailsContent;
+      document.getElementById('order-detail-modal').style.display = 'block';
+    })
+    .catch(error => {
+      console.error('Ошибка при загрузке деталей заказа:', error);
+    });
 }
 
 
-    // Открытие модального окна с изображением
-    function openImageModal(imageUrl) {
-      var modal = document.getElementById('image-modal');
-      var modalImage = document.getElementById('modal-image');
-      modalImage.src = imageUrl;
-      modal.style.display = "block";
+    function loadUserOrders(userId) {
+    fetch(`/api/v1/orders/user/orders/?user_id=${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const ordersContainer = document.getElementById('user-orders');
+            ordersContainer.innerHTML = '';  // Очищаем контейнер перед вставкой новых элементов
+
+            if (data.orders && data.orders.length > 0) {
+                data.orders.forEach(order => {
+                    const orderElement = document.createElement('div');
+                    orderElement.style.marginBottom = '20px';
+                    orderElement.style.padding = '10px';
+                    orderElement.style.border = '1px solid #e2e8f0';
+                    orderElement.style.borderRadius = '8px';
+                    orderElement.style.backgroundColor = '#f8fafc';
+                    orderElement.style.color = '#000';
+                    orderElement.classList.add('order-item');  // Добавляем класс для клика
+
+                    orderElement.innerHTML = `
+                        <div><strong>Заказ #${order.id}</strong></div>
+                        <div>Время Заказа: ${order.order_time}</div>
+                        <div>Общая сумма: ${order.total_amount}</div>
+                        <div>Статус: ${order.order_status}</div>
+                    `;
+
+                    ordersContainer.appendChild(orderElement);
+                });
+
+                // Назначаем обработчики кликов на все новые элементы с классом .order-item
+                document.querySelectorAll('.order-item').forEach(item => {
+                    item.addEventListener('click', function () {
+                        const orderId = this.querySelector('strong').textContent.split('#')[1]; // Получаем ID заказа
+                        console.log(`Клик на заказ с ID: ${orderId}`);  // Логируем для проверки
+                        fetchOrderDetails(orderId); // Загружаем детали заказа
+                    });
+                });
+            } else {
+                ordersContainer.innerHTML = '<p>No orders found.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading orders:', error);
+            document.getElementById('user-orders').innerHTML = '<p>Error loading orders. Please try again later.</p>';
+        });
+}
+
+window.addEventListener('click', function(event) {
+  const modal = document.getElementById('order-detail-modal');
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
+    return cookieValue;
+}
 
-    // Закрытие модального окна
-    var closeModal = document.getElementById('close-modal');
-    closeModal.addEventListener('click', function() {
-      var modal = document.getElementById('image-modal');
-      modal.style.display = "none";
+
+
+function loadMessages(userId) {
+    fetchChatId(userId).then(function(chatId) {
+        if (chatId) {
+            selectedChatId = chatId;
+            subscribeToChat(chatId, userId);
+
+            // Отправка запроса на сервер для обновления статуса сообщений
+            fetch(`/api/v2/chat/mark-as-read/${chatId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')  // Если используется CSRF-токен
+                }
+            }).then(response => {
+                if (response.ok) {
+                    console.log('Messages marked as read');
+                }
+            });
+        } else {
+            selectedChatId = null;
+            document.getElementById('chat-box').innerHTML = 'Нет сообщений. Начните новый чат.';
+        }
     });
+}
 
-    // Закрытие модального окна при клике вне изображения
-    window.addEventListener('click', function(event) {
-      var modal = document.getElementById('image-modal');
-      if (event.target == modal) {
-        modal.style.display = "none";
-      }
-    });
 
-    // Отправка сообщения
+    // Message sending
     document.getElementById('send-button').addEventListener('click', function() {
       var messageContent = document.getElementById('message-box').value;
       var imageFile = document.getElementById('image-upload').files[0];
@@ -231,7 +560,6 @@ function displayMessage(messageData) {
       document.getElementById('image-upload').value = "";
     });
 
-    // Отправка сообщения в существующий чат с фото
     function sendMessageToExistingChat(chatId, messageContent, imageFile) {
       if (imageFile) {
         uploadImageToFirestore(imageFile).then(imageUrl => {
@@ -244,8 +572,7 @@ function displayMessage(messageData) {
       }
     }
 
-    // Функция отправки сообщения в Firestore
-    function sendMessage(chatId, messageContent, imageUrl) {
+function sendMessage(chatId, messageContent, imageUrl) {
       console.log("Отправка сообщения с данными:", {
           sender_id: adminId,
           recipient_id: selectedUserId,
@@ -278,8 +605,7 @@ function displayMessage(messageData) {
       });
     }
 
-    // Функция для загрузки изображения в Firebase Storage
-    function uploadImageToFirestore(imageFile) {
+        function uploadImageToFirestore(imageFile) {
       return new Promise((resolve, reject) => {
         var storageRef = storage.ref().child('message_images/' + imageFile.name);
         var uploadTask = storageRef.put(imageFile);
@@ -306,64 +632,224 @@ function displayMessage(messageData) {
         );
       });
     }
+
+    function uploadImageAndSendMessage(chatId, messageContent, imageFile) {
+      var storageRef = storage.ref().child('message_images/' + Date.now() + '_' + imageFile.name);
+      var uploadTask = storageRef.put(imageFile);
+
+      uploadTask.on('state_changed',
+        function(snapshot) {
+          var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log('Upload progress: ' + progress + '%');
+        },
+        function(error) {
+          console.error("Upload error:", error);
+          alert('Error uploading image. Please try again.');
+        },
+        function() {
+          uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+            sendMessageToChat(chatId, messageContent, downloadURL);
+          });
+        }
+      );
+    }
+
+    function sendMessageToChat(chatId, messageContent, imageUrl) {
+      const messageData = {
+        sender_id: String(adminId),
+        sender_full_name: 'Admin',
+        recipient_id: String(selectedUserId),
+        content: messageContent || '',
+        image_url: imageUrl,
+        timestamp: new Date()
+      };
+
+      db.collection('chats').doc(String(chatId)).collection('messages').add(messageData)
+        .then(() => console.log("Message sent successfully"))
+        .catch((error) => {
+          console.error("Error sending message:", error);
+          alert('Error sending message. Please try again.');
+        });
+    }
+
+    // Customer Info Panel Functions
+    function toggleCustomerInfo() {
+      const sidebar = document.getElementById('customer-info-sidebar');
+      sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.getElementById('close-customer-info').addEventListener('click', function() {
+      document.getElementById('customer-info-sidebar').style.display = 'none';
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        // Update tab styles
+        document.querySelectorAll('.tab').forEach(t => {
+          t.classList.remove('active');
+          t.style.backgroundColor = 'transparent';
+          t.style.color = '#64748b';
+        });
+        this.classList.add('active');
+        this.style.backgroundColor = 'white';
+        this.style.color = '#1e293b';
+
+        // Show corresponding content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.style.display = 'none';
+        });
+        document.getElementById(`${this.dataset.tab}-content`).style.display = 'block';
+      });
+    });
+
+    // Image Modal Functions
+    function openImageModal(imageUrl) {
+      var modal = document.getElementById('image-modal');
+      var modalImage = document.getElementById('modal-image');
+      modalImage.src = imageUrl;
+      modal.style.display = "block";
+    }
+
+    // Закрытие модального окна
+    var closeModal = document.getElementById('close-modal');
+    closeModal.addEventListener('click', function() {
+      var modal = document.getElementById('image-modal');
+      modal.style.display = "none";
+    });
+
+    // Закрытие модального окна при клике вне изображения
+    window.addEventListener('click', function(event) {
+      var modal = document.getElementById('image-modal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    });
   </script>
 
-  <!-- Стили -->
   <style>
-    #user-list::-webkit-scrollbar,
-    #chat-box::-webkit-scrollbar {
-      display: none;
+    /* Base styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    #user-list, #chat-box {
-      scrollbar-width: none;
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 6px;
     }
-    textarea#message-box {
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: #e2e8f0;
+      border-radius: 3px;
+    }
+
+    /* Hover effects */
+    .user-item:hover {
+      background-color: #f8fafc !important;
+    }
+.tab-content{
+display: block;
+    padding: 20px;
+    overflow-y: scroll ;
+    min-height: 450px;
+    max-height: 400px;
+}
+    #send-button:hover {
+      background-color: #2563eb;
+    }
+
+    /* Input focus styles */
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+#min{
+    position: absolute;
+    top: 20%;
+    left: 30%;
+    background-color: white;
+    padding: 20px;
+overflow-y: scroll;
+    min-height: 450px;
+    max-height: 400px;
+    border-radius: 8px;
+    width: 500px;
+    max-width: 100%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+
+}
+#order-detail-modal{
+
+display: none;
+ position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.75);
+  z-index: 50;
+}
+    /* Transitions */
+    .user-item,
+    button,
+    textarea {
+      transition: all 0.2s ease-out;
+    }
+
+    .tab.active {
+      background-color: white;
+      color: #1e293b;
+    }
+
+    /* Message input autoresize */
+    textarea {
+      overflow-y: auto;
+      min-height: 44px;
+      max-height: 120px;
       resize: none;
-      scrollbar-width: none;
     }
-    #chat-box {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    strong{
+    color:#000
     }
-    #image-modal {
-      display: none;
-      position: fixed;
-      z-index: 9999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
+     h3{
+    color:#000
+    }
+     h4{
+    color:#000
+    }
+     p{
+    color:#000
+    }
+    .status-pending {
+    color: #f59e0b; /* Желтый */
+    }
+    .status-in_progress {
+        color: #3b82f6; /* Синий */
+    }
+    .status-delivery {
+        color: #22c55e; /* Зеленый */
+    }
+    .status-completed {
+        color: #10b981; /* Зеленый темнее */
+    }
+    .status-cancelled {
+        color: #ef4444; /* Красный */
+    }
+    .new-messages-count {
+      background-color: #ef4444;  /* Красный фон */
+      color: white;                /* Цвет текста */
+      border-radius: 12px;        /* Закругление углов */
+      padding: 4px 8px;           /* Отступы для лучшего восприятия */
+      font-size: 12px;            /* Размер шрифта */
+      display: inline-block;       /* Убедитесь, что элемент отображается как блочный */
+      min-width: 20px;            /* Минимальная ширина, чтобы текст не сжимался */
+      text-align: center;          /* Центрирование текста */
+    }
 
-      /* Flexbox для идеального центрирования */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    #modal-image {
-      max-width: 80%;
-      max-height: 80%;
-      object-fit: contain; /* Убедитесь, что изображение сохраняет свои пропорции */
-    }
-    #close-modal {
-      position: fixed;
-      top: 20px;
-      right: 35px;
-      color: white;
-      font-size: 40px;
-      cursor: pointer;
-    }
-    .message-user {
-  justify-content: flex-start;
-  background-color: #3b3b3b;
-    }
-
-    /* Сообщения админа отображаются справа */
-    .message-admin {
-      justify-content: flex-end;
-      background-color: #0066cc;
-    }
   </style>
 
 {% endblock %}

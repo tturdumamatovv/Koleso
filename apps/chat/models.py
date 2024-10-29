@@ -24,6 +24,7 @@ class Message(models.Model):
     content = models.TextField(verbose_name=_("Сообщение"), blank=True)
     image = models.ImageField(upload_to='message_images/', null=True, blank=True, verbose_name=_("Изображение"))
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name=_("Дата отправки"))
+    is_read = models.BooleanField(default=False, verbose_name=_("Прочитано"))
 
     def __str__(self):
         return f"Сообщение от {self.sender} в чате {self.chat}"
