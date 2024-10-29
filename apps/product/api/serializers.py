@@ -6,6 +6,7 @@ from apps.product.models import (
     Category,
     Tag, Article
 )  # Set, Ingredient
+from decimal import Decimal
 
 
 # class IngredientSerializer(serializers.ModelSerializer):
@@ -85,6 +86,11 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.category:
             return obj.category.name
         return None
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['quantity'] = Decimal(representation['quantity'])  # Преобразуем в Decimal
+        return representation
 
 
 class SizeProductSerializer(serializers.ModelSerializer):

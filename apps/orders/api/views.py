@@ -132,25 +132,26 @@ class CreateOrderView(generics.CreateAPIView):
 
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
-            ordered_quantity = Decimal(item.get('quantity'))  # Используем Decimal
+            ordered_quantity = Decimal(item.get('quantity'))  # Используйте Decimal
 
             try:
                 product_size = ProductSize.objects.get(id=product_size_id)
                 product = product_size.product  # Получаем связанный продукт
 
-                # Конвертация заказа в килограммы для корректного вычитания
+                # Конвертация количества в килограммы для корректного вычитания
                 if product_size.unit == 'g':
                     quantity_in_kg = ordered_quantity / Decimal('1000')  # 500 г = 0.5 кг
                 elif product_size.unit == 'kg':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = ordered_quantity / Decimal('1000')  # 500 мл = 0.5 кг (для жидкостей)
+                    quantity_in_kg = ordered_quantity / Decimal('1000')  # Примерный перевод для жидкостей
                 elif product_size.unit == 'l':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
-                else:  # Для штук (pcs), определите, сколько это в кг
-                    quantity_in_kg = ordered_quantity  # Если 1 шт = 1 кг (или уточните по необходимости)
+                else:  # Для штук (pcs)
+                    quantity_in_kg = ordered_quantity  # Здесь нужно уточнить, сколько это в кг
 
                 # Проверка на достаточное количество в модели Product
+                print(f"Product: {product.name}, Current Quantity: {product.quantity}, Ordered Quantity (kg): {quantity_in_kg}")
                 if product.quantity < quantity_in_kg:
                     return Response(
                         {"error": f"Недостаточно товара для {product.name}."},
@@ -158,11 +159,12 @@ class CreateOrderView(generics.CreateAPIView):
                     )
 
                 # Уменьшение количества товара в модели Product
-                product.quantity = Decimal(product.quantity) - quantity_in_kg  # Используем Decimal
+                product.quantity = Decimal(product.quantity) - quantity_in_kg  # Используйте Decimal
+                print(f"New Quantity after deduction: {product.quantity}")
                 product.save()  # Сохраняем изменения в Product
 
                 # Рассчитываем стоимость для текущей позиции
-                total_amount += product_size.get_price() * ordered_quantity  # Используем Decimal
+                total_amount += product_size.get_price() * ordered_quantity  # Используйте Decimal
 
             except ProductSize.DoesNotExist:
                 return Response({"error": f"Продукт с указанным размером не найден."},
