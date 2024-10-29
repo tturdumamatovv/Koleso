@@ -133,7 +133,7 @@ class CreateOrderView(generics.CreateAPIView):
         # Пробегаем по каждому элементу заказа
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
-            ordered_quantity = item.get('quantity')
+            ordered_quantity = float(item.get('quantity'))  # Преобразуем в float
 
             try:
                 product_size = ProductSize.objects.get(id=product_size_id)
