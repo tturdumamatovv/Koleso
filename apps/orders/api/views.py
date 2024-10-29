@@ -144,11 +144,11 @@ class CreateOrderView(generics.CreateAPIView):
                 elif product_size.unit == 'kg':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = ordered_quantity / Decimal('1000')  # Предположим, что 1 л = 1 кг (для жидкостей)
+                    quantity_in_kg = ordered_quantity / Decimal('1000')  # 500 мл = 0.5 кг (для жидкостей)
                 elif product_size.unit == 'l':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
-                else:  # Для штук (pcs)
-                    quantity_in_kg = ordered_quantity  # Здесь нужно будет определить, как 1 шт. соотносится с количеством в кг
+                else:  # Для штук (pcs), если 1 шт. = 1 кг, это нужно будет определить
+                    quantity_in_kg = ordered_quantity  # Например, если 1 шт. = 1 кг для примера
 
                 # Проверка на достаточное количество в модели Product
                 if product.quantity < quantity_in_kg:
@@ -158,7 +158,7 @@ class CreateOrderView(generics.CreateAPIView):
                     )
 
                 # Уменьшение количества товара в модели Product
-                product.quantity = product.quantity - quantity_in_kg  # Используем Decimal для корректного вычитания
+                product.quantity = Decimal(product.quantity) - quantity_in_kg  # Используем Decimal
                 product.save()  # Сохраняем изменения в Product
 
                 # Рассчитываем стоимость для текущей позиции
