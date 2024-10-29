@@ -66,6 +66,42 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
 
+class ProductSize(models.Model):
+    UNIT_CHOICES = [
+        ('kg', 'кг'),
+        ('g', 'гр'),
+        ('l', 'л'),
+        ('ml', 'мл'),
+        ('pcs', 'шт')
+    ]
+
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='product_sizes',
+                                verbose_name=_('Продукт'))
+    size = models.CharField(max_length=255, verbose_name=_('Размер'), blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена'))
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена со скидкой'),
+                                           blank=True, null=True)
+    bonus_price = models.DecimalField(default=0, max_digits=10, decimal_places=2, verbose_name=_('Цена бонусами'))
+    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
+    unit = models.CharField(max_length=5, choices=UNIT_CHOICES, verbose_name=_('Единица измерения'), default='pcs')
+
+    class Meta:
+        verbose_name = "Цена продукта по размеру"
+        verbose_name_plural = "Цены продуктов по размерам"
+
+    def __str__(self):
+        return f"{self.product.name} - {self.size} - {self.get_price()}"
+
+    def get_price(self):
+        return self.discounted_price if self.discounted_price else self.price
+
+    def save(self, *args, **kwargs):
+        # Генерация строки размера с русскими обозначениями
+        unit_mapping = dict(self.UNIT_CHOICES)  # Создаем отображение из choices
+        self.size = f"{self.quantity} {unit_mapping[self.unit]}"  # Используем русское значение
+        super().save(*args, **kwargs)
+
+
 class Product(models.Model):
     is_popular = models.BooleanField(default=False, verbose_name=_('Популярный'))
     is_new = models.BooleanField(default=False, verbose_name=_('Новинка'))
@@ -87,6 +123,9 @@ class Product(models.Model):
     tags = models.ManyToManyField('Tag', related_name='products', verbose_name=_('Теги'), blank=True)
     order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
     is_active = models.BooleanField(default=True, verbose_name=_("Активный Торав"))
+    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
+    unit = models.CharField(max_length=5, choices=ProductSize.UNIT_CHOICES, verbose_name=_('Единица измерения'),
+                            default='pcs')
 
     class Meta:
         verbose_name = "Продукт"
@@ -131,36 +170,6 @@ class Product(models.Model):
             self.photo.save(new_filename, ContentFile(image_io.getvalue()), save=False)
 
         super().save(*args, **kwargs)
-
-
-class ProductSize(models.Model):
-    UNIT_CHOICES = [
-        ('kg', 'Килограммы'),
-        ('g', 'Граммы'),
-        ('l', 'Литры'),
-        ('ml', 'Миллилитры'),
-        ('pcs', 'Штуки')
-    ]
-
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_sizes',
-                                verbose_name=_('Продукт'))
-    size = models.CharField(max_length=255, verbose_name=_('Размер'))
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена'))
-    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Цена со скидкой'),
-                                           blank=True, null=True)
-    bonus_price = models.DecimalField(default=0, max_digits=10, decimal_places=2, verbose_name=_('Цена бонусами'))
-    quantity = models.IntegerField(verbose_name=_('Количество'), default=0)
-    unit = models.CharField(max_length=5, choices=UNIT_CHOICES, verbose_name=_('Единица измерения'), default='pcs')
-
-    class Meta:
-        verbose_name = "Цена продукта по размеру"
-        verbose_name_plural = "Цены продуктов по размерам"
-
-    def __str__(self):
-        return f"{self.product.name} - {self.size} - {self.get_price()}"
-
-    def get_price(self):
-        return self.discounted_price if self.discounted_price else self.price
 
 
 class Topping(models.Model):

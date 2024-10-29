@@ -137,29 +137,33 @@ class CreateOrderView(generics.CreateAPIView):
 
             try:
                 product_size = ProductSize.objects.get(id=product_size_id)
+                product = product_size.product  # Получаем связанный продукт
 
-                # Проверка на достаточное количество на складе
-                if product_size.quantity < ordered_quantity:
+                # Конвертация количества в килограммы для правильного вычитания
+                if product_size.unit == 'g':
+                    quantity_in_kg = ordered_quantity / 1000  # 500 г = 0.5 кг
+                elif product_size.unit == 'kg':
+                    quantity_in_kg = ordered_quantity  # Прямо в кг
+                elif product_size.unit == 'ml':
+                    quantity_in_kg = ordered_quantity / 1000  # Предположим, что 1 л = 1 кг
+                elif product_size.unit == 'l':
+                    quantity_in_kg = ordered_quantity  # Прямо в кг
+                else:  # Для штук (pcs), просто используем заказанное количество
+                    quantity_in_kg = ordered_quantity
+
+                # Проверка на достаточное количество в модели Product
+                if product.quantity < quantity_in_kg:
                     return Response(
-                        {"error": f"Недостаточно товара для {product_size.product.name} - {product_size.size}."},
-                        status=status.HTTP_400_BAD_REQUEST)
+                        {"error": f"Недостаточно товара для {product.name}."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
-                # Уменьшение количества товара
-                product_size.quantity -= ordered_quantity
-                product_size.save()
+                # Уменьшение количества товара в модели Product
+                product.quantity -= quantity_in_kg
+                product.save()  # Сохраняем изменения в Product
 
                 # Рассчитываем стоимость для текущей позиции
-                if product_size.unit in ['kg', 'g', 'l', 'ml']:
-                    if product_size.unit == 'g':
-                        unit_quantity = ordered_quantity / 1000  # Пример: 500 г = 0.5 кг
-                    elif product_size.unit == 'ml':
-                        unit_quantity = ordered_quantity / 1000  # Пример: 500 мл = 0.5 л
-                    else:
-                        unit_quantity = ordered_quantity  # Килограммы и литры считаются напрямую
-
-                    total_amount += product_size.get_price() * Decimal(unit_quantity)
-                else:  # Для штук (pcs)
-                    total_amount += product_size.get_price() * Decimal(ordered_quantity)
+                total_amount += product_size.get_price() * Decimal(ordered_quantity)
 
             except ProductSize.DoesNotExist:
                 return Response({"error": f"Продукт с указанным размером не найден."},
