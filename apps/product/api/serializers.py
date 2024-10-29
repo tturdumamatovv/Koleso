@@ -45,6 +45,7 @@ class ProductSizeSerializer(serializers.ModelSerializer):
         representation['price'] = float(representation['price'])
         representation['discounted_price'] = float(representation['discounted_price']) if representation[
                                                                                               'discounted_price'] is not None else None
+        representation['quantity'] = Decimal(representation['quantity'])
         return representation
 
 
