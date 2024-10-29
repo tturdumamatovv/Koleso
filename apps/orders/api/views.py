@@ -133,7 +133,7 @@ class CreateOrderView(generics.CreateAPIView):
         # Пробегаем по каждому элементу заказа
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
-            ordered_quantity = float(item.get('quantity'))  # Преобразуем в float
+            ordered_quantity = Decimal(item.get('quantity'))  # Используем Decimal
 
             try:
                 product_size = ProductSize.objects.get(id=product_size_id)
@@ -141,15 +141,15 @@ class CreateOrderView(generics.CreateAPIView):
 
                 # Конвертация заказа в килограммы для корректного вычитания
                 if product_size.unit == 'g':
-                    quantity_in_kg = ordered_quantity / 1000  # 500 г = 0.5 кг
+                    quantity_in_kg = ordered_quantity / Decimal('1000')  # 500 г = 0.5 кг
                 elif product_size.unit == 'kg':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = ordered_quantity / 1000  # Предположим, что 1 л = 1 кг (для жидкостей)
+                    quantity_in_kg = ordered_quantity / Decimal('1000')  # Предположим, что 1 л = 1 кг (для жидкостей)
                 elif product_size.unit == 'l':
                     quantity_in_kg = ordered_quantity  # Прямо в кг
-                else:  # Для штук (pcs), если 1 шт. = 1 кг, это нужно будет определить
-                    quantity_in_kg = ordered_quantity  # Например, если 1 шт. = 1 кг
+                else:  # Для штук (pcs)
+                    quantity_in_kg = ordered_quantity  # Здесь нужно будет определить, как 1 шт. соотносится с количеством в кг
 
                 # Проверка на достаточное количество в модели Product
                 if product.quantity < quantity_in_kg:
@@ -163,7 +163,7 @@ class CreateOrderView(generics.CreateAPIView):
                 product.save()  # Сохраняем изменения в Product
 
                 # Рассчитываем стоимость для текущей позиции
-                total_amount += product_size.get_price() * Decimal(ordered_quantity)
+                total_amount += product_size.get_price() * ordered_quantity  # Используем Decimal
 
             except ProductSize.DoesNotExist:
                 return Response({"error": f"Продукт с указанным размером не найден."},
