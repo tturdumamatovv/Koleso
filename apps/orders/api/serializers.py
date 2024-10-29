@@ -98,6 +98,9 @@ class OrderListSerializer(serializers.ModelSerializer):
     user_address = serializers.SerializerMethodField()
     app_download_url = serializers.SerializerMethodField()
     user = UserSummarySerializer()
+    order_status = serializers.SerializerMethodField()
+    payment_method = serializers.SerializerMethodField()
+    order_source = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -123,6 +126,30 @@ class OrderListSerializer(serializers.ModelSerializer):
         if not link:
             return None
         return link
+
+    def get_order_status(self, obj):
+        status_map = {
+            'pending': 'В ожидании',
+            'in_progress': 'В процессе',
+            'delivery': 'Доставка',
+            'completed': 'Завершено',
+            'cancelled': 'Отменено'
+        }
+        return status_map.get(obj.order_status, obj.order_status)  # Поле app_download_link было связано с моделью TelegramBotToken, которая была удалена
+
+    def get_payment_method(self, obj):
+        status_map = {
+            'cash': 'Наличкой',
+            'card': 'Картой'
+        }
+        return status_map.get(obj.payment_method, obj.payment_method)
+
+    def get_order_source(self, obj):
+        status_map = {
+            'web': 'Веб Сайт',
+            'mobile': 'Мобильное Приложение'
+        }
+        return status_map.get(obj.order_source, obj.order_source)
 
 
 class OrderDeliverySerializer(serializers.ModelSerializer):

@@ -424,7 +424,7 @@ function fetchOrderDetails(orderId) {
           ${item.product.image ? `<img src="${item.product.image}" alt="${item.product.name}" style="max-width: 100px; margin-right: 10px;">` : ''}
           <p><strong>Количество:</strong> ${item.quantity}</p>
           <p><strong>Цена:</strong> ${item.product.price || 'N/A'} сом.</p>
-          <p><strong>Размер:</strong> ${item.size?.name || 'Не указано'}</p>
+          <p><strong>Размер:</strong> ${item.product.product_size || 'Не указано'}</p>
         </div>
       `;
     } else {
