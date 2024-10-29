@@ -37,7 +37,7 @@ class ProductSizeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductSize
-        fields = ['id', 'size', 'price', 'discounted_price', 'bonus_price', 'unit']
+        fields = ['id', 'size', 'price', 'discounted_price', 'bonus_price', 'quantity', 'unit']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

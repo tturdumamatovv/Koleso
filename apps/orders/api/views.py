@@ -132,26 +132,32 @@ class CreateOrderView(generics.CreateAPIView):
 
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
-            ordered_quantity = Decimal(item.get('quantity'))  # Используйте Decimal
+            ordered_quantity = Decimal(item.get('quantity'))  # Преобразуем в Decimal
+            print(f"Ordered Quantity: {ordered_quantity}")
 
             try:
                 product_size = ProductSize.objects.get(id=product_size_id)
                 product = product_size.product  # Получаем связанный продукт
 
-                # Конвертация количества в килограммы для корректного вычитания
+                # Конвертация заказа в килограммы для корректного вычитания
                 if product_size.unit == 'g':
-                    quantity_in_kg = ordered_quantity / Decimal('1000')  # 500 г = 0.5 кг
+                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal('1000')  # 500 г = 0.5 кг
+                    print(f"Product Size Unit: grams, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'kg':
-                    quantity_in_kg = ordered_quantity  # Прямо в кг
+                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity)  # Прямо в кг
+                    print(f"Product Size Unit: kg, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = ordered_quantity / Decimal('1000')  # Примерный перевод для жидкостей
+                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal('1000')  # 500 мл = 0.5 кг (для жидкостей)
+                    print(f"Product Size Unit: ml, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'l':
-                    quantity_in_kg = ordered_quantity  # Прямо в кг
+                    quantity_in_kg = Decimal(ordered_quantity)  # Прямо в кг
+                    print(f"Product Size Unit: liters, Quantity in kg: {quantity_in_kg}")
                 else:  # Для штук (pcs)
-                    quantity_in_kg = ordered_quantity  # Здесь нужно уточнить, сколько это в кг
+                    quantity_in_kg = Decimal(ordered_quantity)  # Если 1 шт = 1 кг, то просто используем количество
+                    print(f"Product Size Unit: pcs, Quantity in kg: {quantity_in_kg}")
 
                 # Проверка на достаточное количество в модели Product
-                print(f"Product: {product.name}, Current Quantity: {product.quantity}, Ordered Quantity (kg): {quantity_in_kg}")
+                print(f"Current Product Quantity: {product.quantity}, Required Quantity: {quantity_in_kg}")
                 if product.quantity < quantity_in_kg:
                     return Response(
                         {"error": f"Недостаточно товара для {product.name}."},
@@ -159,12 +165,9 @@ class CreateOrderView(generics.CreateAPIView):
                     )
 
                 # Уменьшение количества товара в модели Product
-                product.quantity = Decimal(product.quantity) - quantity_in_kg  # Используйте Decimal
+                product.quantity = Decimal(product.quantity) - quantity_in_kg  # Используем Decimal
                 print(f"New Quantity after deduction: {product.quantity}")
                 product.save()  # Сохраняем изменения в Product
-
-                # Рассчитываем стоимость для текущей позиции
-                total_amount += product_size.get_price() * ordered_quantity  # Используйте Decimal
 
             except ProductSize.DoesNotExist:
                 return Response({"error": f"Продукт с указанным размером не найден."},
