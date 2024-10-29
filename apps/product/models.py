@@ -99,6 +99,7 @@ class ProductSize(models.Model):
         # Генерация строки размера с русскими обозначениями
         unit_mapping = dict(self.UNIT_CHOICES)  # Создаем отображение из choices
         self.size = f"{self.quantity} {unit_mapping[self.unit]}"  # Используем русское значение
+        print(f"Saving Product: {self.name}, Quantity: {self.quantity}")
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -154,6 +155,10 @@ class Product(models.Model):
         # Проверка на привязку к конечной категории
         if self.category and self.category.get_children().exists():
             raise ValueError(_('Продукты могут быть привязаны только к конечным категориям без подкатегорий'))
+
+        print(f"Saving Product: {self.name}, Quantity: {self.quantity}")
+
+        super().save(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         if self.photo:
