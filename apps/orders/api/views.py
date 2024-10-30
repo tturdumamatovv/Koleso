@@ -295,9 +295,9 @@ class CreateOrderView(generics.CreateAPIView):
             'pg_description': f"Оплата заказа #{order_id}",
             'pg_user_phone': phone_number,
             'pg_user_contact_email': email,
-            'pg_result_url': 'https://ak-tilek.kg/ru/',
-            'pg_success_url': 'https://ak-tilek.kg/ru/success/',
-            'pg_failure_url': 'https://ak-tilek.kg/ru/failure/',
+            'pg_result_url': 'https://koleso.kg/',
+            'pg_success_url': 'https://koleso.kg/success/',
+            'pg_failure_url': 'https://koleso.kg/failure/',
             'pg_testing_mode': 1,
             'pg_salt': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
