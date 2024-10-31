@@ -363,6 +363,7 @@ class OrderPreviewView(generics.GenericAPIView):
                     restaurant_location = (restaurant.latitude, restaurant.longitude)
                     distance = get_distance_between_locations('AIzaSyCWbO5aOn8hS3EWJycj73dHqH8fHHfO4w4', user_location,
                                                               restaurant_location)
+
                     if distance is not None and distance < min_distance and is_restaurant_open(restaurant, order_time):
                         min_distance = distance
                         nearest_restaurant = restaurant
@@ -371,7 +372,7 @@ class OrderPreviewView(generics.GenericAPIView):
                 return Response({"error": "No available restaurants found or all are closed."},
                                 status=status.HTTP_400_BAD_REQUEST)
 
-            delivery_fee = calculate_delivery_fee(min_distance)
+            delivery_fee = str(calculate_delivery_fee(min_distance)) + ' мин'
 
         response_data = self.prepare_response(delivery_fee, is_pickup, min_distance)
 
