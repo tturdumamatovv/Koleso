@@ -233,11 +233,11 @@ class OrderItem(models.Model):
 
 
 class DistancePricing(models.Model):
-    distance = models.IntegerField(verbose_name=_("Расстояние (км)"))
-    price = models.IntegerField(verbose_name=_("Цена"))
+    distance = models.IntegerField(verbose_name=_("Расстояние (м)"))
+    price = models.IntegerField(verbose_name=_("Время (мин)"))
 
     def __str__(self):
-        return f"{self.distance} км - {self.price} сом"
+        return f"{self.distance} м - {self.price} мин"
 
     class Meta:
         verbose_name = _("Тариф на расстояние")
