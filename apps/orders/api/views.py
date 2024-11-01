@@ -383,7 +383,8 @@ class OrderPreviewView(generics.GenericAPIView):
 
             "delivery_info": {
                 "distance_km": min_distance,
-                "delivery_fee": delivery_fee
+                "delivery_fee": 0,
+                "delivery_time": delivery_fee,
             } if not is_pickup else None,
 
         }
