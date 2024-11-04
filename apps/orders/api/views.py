@@ -580,12 +580,15 @@ class CollectorOrderHistoryView(generics.ListAPIView):
 class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
+    # Define the queryset to retrieve only orders belonging to the authenticated user
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user)
+
     def patch(self, request, *args, **kwargs):
-        # Retrieve the order ID from URL parameters
         order_id = kwargs.get('pk')
 
         # Retrieve the order, ensuring it belongs to the user
-        order = get_object_or_404(Order, pk=order_id, user=request.user)
+        order = get_object_or_404(self.get_queryset(), pk=order_id)
 
         # Check if the order status is "completed"
         if order.order_status == 'completed':
