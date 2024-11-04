@@ -165,7 +165,6 @@ class OrderDeliverySerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     products = ProductOrderItemSerializer(many=True, required=False)
-    # sets = SetOrderItemSerializer(many=True, required=False)
     restaurant_id = serializers.IntegerField(required=False, allow_null=True)
     delivery = DeliverySerializer(required=False)
     order_source = serializers.ChoiceField(choices=[('web', 'web'), ('mobile', 'mobile')], default='web')
@@ -180,25 +179,16 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'delivery', 'order_time', 'total_amount', 'is_pickup',
             'order_status', 'products', 'payment_method', 'change', 'restaurant_id',
             'order_source', 'comment', 'promo_code', 'bonus_points',
-            # 'sets',
         ]
         read_only_fields = ['total_amount', 'order_time', 'order_status']
 
     def create(self, validated_data):
-        print(validated_data)
         bonus_points = validated_data.pop('bonus_points', 0)
         products_data = validated_data.pop('products', [])
         promo_code_data = validated_data.pop('promo_code', None)
 
-        sets_data = validated_data.pop('sets', [])
-        if validated_data.get('delivery'):
-            delivery_data = validated_data.pop('delivery')
-            user_address = UserAddress.objects.get(id=delivery_data['user_address_id'])
-
-        else:
-            delivery_data = {}
-            user_address = None
-        # user = validated_data.pop('user')
+        delivery_data = validated_data.get('delivery', {})
+        user_address = UserAddress.objects.get(id=delivery_data['user_address_id']) if delivery_data else None
 
         nearest_restaurant = self.context['nearest_restaurant']
         delivery_fee = self.context['delivery_fee']
@@ -206,59 +196,56 @@ class OrderSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             delivery = Delivery.objects.create(
                 restaurant=nearest_restaurant,
-                user_address=user_address if user_address else None,
-                delivery_time=delivery_data['delivery_time'] if 'delivery_time' in delivery_data else None,
+                user_address=user_address,
+                delivery_time=delivery_data.get('delivery_time'),
                 delivery_fee=delivery_fee
             )
 
-
             order = Order.objects.create(
                 delivery=delivery,
-                # user=user,
                 restaurant=nearest_restaurant,
                 **validated_data
             )
+
             if promo_code_data:
                 promo_code_instance = PromoCode.objects.filter(code=promo_code_data).first()
                 if not promo_code_instance or not promo_code_instance.is_valid():
                     raise serializers.ValidationError({"promo_code": "Промокод недействителен или его срок истек."})
-                validated_data['promo_code'] = promo_code_instance
-            else:
-                validated_data['promo_code'] = None
+                order.promo_code = promo_code_instance
 
             user = self.context['request'].user
-            available_bonus_points = user.bonus  # Assuming 'bonus' field holds available points
+            available_bonus_points = user.bonus
             if bonus_points > available_bonus_points:
                 raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
 
-            bonus_discount = Decimal(bonus_points) / 100  # Adjust as needed (0.01 per point assumption)
-            order.total_amount = max(order.get_total_amount() - bonus_discount, Decimal(0))
+            # Calculate total amount
+            total_amount = delivery_fee
+            for product_data in products_data:
+                order_item = OrderItem(
+                    order=order,
+                    product_size_id=product_data['product_size_id'],
+                    quantity=product_data['quantity'],
+                    is_bonus=product_data['is_bonus']
+                )
+                order_item.save()
+
+                if product_data.get('topping_ids'):
+                    toppings = Topping.objects.filter(id__in=product_data['topping_ids'])
+                    order_item.topping.set(toppings)
+
+                # Accumulate the order item's total amount
+                total_amount += order_item.calculate_total_amount()
+
+            # Apply bonus discount to total amount
+            bonus_discount = Decimal(bonus_points)  # Adjust as needed (e.g., 0.01 per point)
+            final_amount = max(total_amount - bonus_discount, Decimal(0))
+            order.total_amount = final_amount
 
             # Update user's bonus balance
             user.bonus -= bonus_points
             user.save()
 
-            for product_data in products_data:
-                topping_ids = product_data.pop('topping_ids', [])
-                excluded_ingredient_ids = product_data.pop('excluded_ingredient_ids', [])
-
-                order_item = OrderItem(order=order, product_size_id=product_data['product_size_id'],
-                                       quantity=product_data['quantity'], is_bonus=product_data['is_bonus'])
-
-                if topping_ids:
-                    toppings = Topping.objects.filter(id__in=topping_ids)
-                    order_item.save()  # Сохраняем объект перед установкой связей ManyToMany
-                    order_item.topping.set(toppings)  # Устанавливаем начинки
-
-                else:
-                    order_item.save()
-                # if excluded_ingredient_ids:
-                #     excluded_ingredients = Ingredient.objects.filter(id__in=excluded_ingredient_ids)
-                #     order_item.excluded_ingredient.set(excluded_ingredients)
-
-            # for set_data in sets_data:
-            #     set_order_item = OrderItem(order=order, set_id=set_data['set_id'], quantity=set_data['quantity'])
-            #     set_order_item.save()
+            order.save()
 
         return order
 
