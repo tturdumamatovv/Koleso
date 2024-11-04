@@ -36,7 +36,8 @@ from .serializers import (
     ReportSerializer,
     RestaurantSerializer,
     OrderListSerializer,
-    OrderDeliverySerializer
+    OrderDeliverySerializer,
+    CancelOrderSerializer
 )
 from ..freedompay import generate_signature
 from ..permissions import IsCollector
@@ -579,6 +580,7 @@ class CollectorOrderHistoryView(generics.ListAPIView):
 
 class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = CancelOrderSerializer  # Assign the serializer
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)

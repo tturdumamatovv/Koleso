@@ -266,3 +266,9 @@ class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = ['image', 'description', 'contact_number']
+
+
+class CancelOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['order_status']
