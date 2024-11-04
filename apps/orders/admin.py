@@ -1,5 +1,6 @@
 from urllib.parse import quote
 
+from django.db.models import Count, Q
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
@@ -56,9 +57,11 @@ class OrderAdmin(ModelAdmin, ImportExportModelAdmin):
     import_form_class = ImportForm
     export_form_class = ExportForm
     list_display = (
-        'id', 'restaurant', 'delivery', 'order_time', 'total_amount', 'link_to_user', 'order_status', 'is_pickup')
-    search_fields = ('user__phone_number',)
-    list_filter = ('order_time', 'order_status', 'restaurant', 'is_pickup')
+        'id', 'restaurant', 'delivery', 'order_time', 'total_amount', 'link_to_user', 'order_status', 'is_pickup',
+        'courier', 'collector'
+    )
+    search_fields = ('user__phone_number', 'courier__phone_number', 'collector__phone_number')
+    list_filter = ('order_time', 'order_status', 'restaurant', 'is_pickup', 'courier', 'collector')
     list_display_links = ('id',)
     list_editable = ('order_status',)
     readonly_fields = ('user', 'delivery', 'order_source', 'id',)
@@ -72,27 +75,9 @@ class OrderAdmin(ModelAdmin, ImportExportModelAdmin):
     total_amount.short_description = 'Общая сумма'
 
     def link_to_user(self, obj):
-        # return 1
         return format_html('<a href="{}">{}</a>', obj.user.get_admin_url() if obj.user else '', obj.user)
 
     link_to_user.short_description = 'Пользователь'
-
-    def order_request_button(self, obj):
-        distance = obj.delivery.distance_km
-        delivery_fee = obj.delivery.delivery_fee
-        message = generate_order_message(obj, distance, delivery_fee)
-        url_encoded_message = quote(message)
-        phone = WhatsAppChat.objects.first()
-        if not phone:
-            return format_html('')
-        else:
-            phone.whatsapp_number
-
-        link = f'https://wa.me/{phone}?text={url_encoded_message}'
-        return format_html(
-            f'<a style="color: white; background-color: orange;" class="button" target="_blank" href="{link}">WhatsApp</a>')
-
-    order_request_button.short_description = 'Действие'
 
 
 @admin.register(DistancePricing)
