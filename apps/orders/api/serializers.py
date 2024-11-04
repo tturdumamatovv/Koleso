@@ -1,5 +1,7 @@
 import pytz
 
+from decimal import Decimal
+
 from django.db import transaction
 from django.conf import settings
 
@@ -184,6 +186,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         print(validated_data)
+        bonus_points = validated_data.pop('bonus_points', 0)
         products_data = validated_data.pop('products', [])
         promo_code_data = validated_data.pop('promo_code', None)
 
@@ -222,6 +225,18 @@ class OrderSerializer(serializers.ModelSerializer):
                 validated_data['promo_code'] = promo_code_instance
             else:
                 validated_data['promo_code'] = None
+
+            user = self.context['request'].user
+            available_bonus_points = user.bonus  # Assuming 'bonus' field holds available points
+            if bonus_points > available_bonus_points:
+                raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
+
+            bonus_discount = Decimal(bonus_points) / 100  # Adjust as needed (0.01 per point assumption)
+            order.total_amount = max(order.get_total_amount() - bonus_discount, Decimal(0))
+
+            # Update user's bonus balance
+            user.bonus -= bonus_points
+            user.save()
 
             for product_data in products_data:
                 topping_ids = product_data.pop('topping_ids', [])
