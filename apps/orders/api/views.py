@@ -558,7 +558,6 @@ class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CancelOrderSerializer
 
-    # Conversion rates to base units (e.g., kg for weight and l for volume)
     UNIT_CONVERSIONS = {
         'g': Decimal('0.001'),  # grams to kg
         'kg': Decimal('1'),  # kg is base
@@ -617,22 +616,12 @@ class CancelOrderView(generics.UpdateAPIView):
                 f"New stock quantity: {product.quantity}"
             )
 
-        # Возвращаем бонусные баллы пользователю, если они были списаны
-        if order.partial_bonus_amount:
-            user = order.user
-            user.bonus += order.partial_bonus_amount
-            user.save()
-            logger.info(
-                f"Returned {order.partial_bonus_amount} bonus points to user {user.phone_number}. "
-                f"New bonus balance: {user.bonus}"
-            )
-
-        # Update order status to "cancelled" and save
+        # Обновляем статус заказа на "отменен" и сохраняем
         order.order_status = 'cancelled'
         order.save()
         logger.info(f"Order #{order.id} status updated to 'cancelled'.")
 
         return Response(
-            {'status': 'success', 'message': 'Order has been cancelled, stock quantities and bonus points have been restored.'},
+            {'status': 'success', 'message': 'Order has been cancelled, stock quantities have been restored.'},
             status=status.HTTP_200_OK
         )
