@@ -3,6 +3,7 @@ import requests
 from datetime import datetime
 from decimal import Decimal
 
+from django.db import transaction
 from django.http import JsonResponse
 from django.utils.timezone import localtime
 from django.shortcuts import get_object_or_404
@@ -585,44 +586,47 @@ class CancelOrderView(generics.UpdateAPIView):
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
 
+    @transaction.atomic
     def patch(self, request, *args, **kwargs):
         order_id = kwargs.get('pk')
 
-        # Retrieve the order, ensuring it belongs to the user
         order = get_object_or_404(self.get_queryset(), pk=order_id)
 
-        # Check if the order status is "completed"
         if order.order_status == 'completed':
             return Response(
                 {'error': 'You cannot cancel an order that has been delivered.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Update stock quantities for each order item
         for order_item in order.order_items.all():
             product_size = order_item.product_size
             quantity_to_restore = Decimal(order_item.quantity)
 
-            # Debug: Print out product and unit information
             print(
-                f"Restoring product: {product_size.product.name}, Unit: {product_size.unit}, Quantity: {quantity_to_restore}")
+                f"Restoring product: {product_size.product.name}, "
+                f"Unit: {product_size.unit}, Quantity Ordered: {quantity_to_restore}"
+            )
 
-            # Adjust the stock in the Product model based on the unit
+            # Convert the quantity based on unit
             if product_size.unit == 'g':
-                restored_quantity = quantity_to_restore / Decimal('1000')  # Grams to kg
+                restored_quantity = quantity_to_restore / Decimal('1000')
             elif product_size.unit == 'ml':
-                restored_quantity = quantity_to_restore / Decimal('1000')  # Milliliters to liters
+                restored_quantity = quantity_to_restore / Decimal('1000')
             else:
-                restored_quantity = quantity_to_restore  # Direct units or kg
+                restored_quantity = quantity_to_restore
 
-            print(f"Restored Quantity in kg/l/pcs: {restored_quantity}")
+            print(f"Restored Quantity to add: {restored_quantity}")
 
-            # Increase the product quantity and save
-            product_size.product.quantity += restored_quantity
+            # Ensure restored_quantity is a Decimal and update the product quantity
+            product_quantity_before = Decimal(product_size.product.quantity)
+            product_size.product.quantity = product_quantity_before + restored_quantity
             product_size.product.save()
-            print(f"New Product Quantity: {product_size.product.quantity}")
 
-        # Update the order status to "cancelled"
+            # Debug: Confirm the updated quantity is saved correctly
+            print(f"New Product Quantity for {product_size.product.name}: {product_size.product.quantity}")
+            if product_size.product.quantity != product_quantity_before + restored_quantity:
+                print("Error: Product quantity did not update as expected.")
+
         order.order_status = 'cancelled'
         order.save()
 
