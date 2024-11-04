@@ -580,7 +580,7 @@ class CollectorOrderHistoryView(generics.ListAPIView):
 
 class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = CancelOrderSerializer  # Assign the serializer
+    serializer_class = CancelOrderSerializer
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
@@ -601,17 +601,26 @@ class CancelOrderView(generics.UpdateAPIView):
         # Update stock quantities for each order item
         for order_item in order.order_items.all():
             product_size = order_item.product_size
-            quantity_to_restore = order_item.quantity
+            quantity_to_restore = Decimal(order_item.quantity)
+
+            # Debug: Print out product and unit information
+            print(
+                f"Restoring product: {product_size.product.name}, Unit: {product_size.unit}, Quantity: {quantity_to_restore}")
 
             # Adjust the stock in the Product model based on the unit
             if product_size.unit == 'g':
-                product_size.product.quantity += quantity_to_restore / Decimal('1000')  # Grams to kg
+                restored_quantity = quantity_to_restore / Decimal('1000')  # Grams to kg
             elif product_size.unit == 'ml':
-                product_size.product.quantity += quantity_to_restore / Decimal('1000')  # Milliliters to liters
+                restored_quantity = quantity_to_restore / Decimal('1000')  # Milliliters to liters
             else:
-                product_size.product.quantity += quantity_to_restore  # Direct units or kg
+                restored_quantity = quantity_to_restore  # Direct units or kg
 
+            print(f"Restored Quantity in kg/l/pcs: {restored_quantity}")
+
+            # Increase the product quantity and save
+            product_size.product.quantity += restored_quantity
             product_size.product.save()
+            print(f"New Product Quantity: {product_size.product.quantity}")
 
         # Update the order status to "cancelled"
         order.order_status = 'cancelled'
