@@ -1,4 +1,5 @@
 import requests
+import logging
 
 from datetime import datetime
 from decimal import Decimal
@@ -54,6 +55,9 @@ if payment_settings:
 else:
     PAYBOX_URL = ''
     PAYBOX_MERCHANT_ID = ''
+
+
+logger = logging.getLogger(__name__)
 
 
 class ListOrderView(generics.ListAPIView):
@@ -590,29 +594,41 @@ class CancelOrderView(generics.UpdateAPIView):
     def patch(self, request, *args, **kwargs):
         order_id = kwargs.get('pk')
 
+        # Retrieve the order
         order = get_object_or_404(self.get_queryset(), pk=order_id)
+        logger.info(f"Attempting to cancel order #{order.id}")
 
+        # Prevent cancellation if the order is already completed
         if order.order_status == 'completed':
+            logger.warning(f"Order #{order.id} is completed and cannot be cancelled.")
             return Response(
                 {'error': 'You cannot cancel an order that has been delivered.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Restore stock quantities for each order item
         for order_item in order.order_items.all():
             product_size = order_item.product_size
             quantity_to_restore = Decimal(order_item.quantity)
 
-            # Directly add the quantity back to the product
+            # Check that product_size and product are valid
+            if not product_size or not product_size.product:
+                logger.error(f"Order item {order_item.id} does not have a valid product or product size.")
+                continue
+
+            # Add the quantity back to the product's stock
             product = product_size.product
-            product.quantity += quantity_to_restore
+            initial_quantity = Decimal(product.quantity)
+            product.quantity = initial_quantity + quantity_to_restore
             product.save()
 
-            # Debug: Confirm the updated quantity is saved correctly
-            print(f"Restored {quantity_to_restore} to {product.name}, New Quantity: {product.quantity}")
+            # Log to confirm the stock update
+            logger.info(f"Restored {quantity_to_restore} to {product.name} stock. New quantity: {product.quantity}")
 
-        # Update the order status to "cancelled"
+        # Update order status to "cancelled" and save
         order.order_status = 'cancelled'
         order.save()
+        logger.info(f"Order #{order.id} status updated to 'cancelled'.")
 
         return Response(
             {'status': 'success', 'message': 'Order has been cancelled, and stock quantities have been restored.'},
