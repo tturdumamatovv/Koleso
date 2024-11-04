@@ -1,4 +1,5 @@
 import pytz
+import logging
 
 from decimal import Decimal
 
@@ -18,6 +19,9 @@ from apps.orders.models import (
     TelegramBotToken, PromoCode
 
 )  # Ingredient)
+
+
+logger = logging.getLogger(__name__)
 
 
 class RestaurantSerializer(serializers.ModelSerializer):
@@ -191,13 +195,15 @@ class OrderSerializer(serializers.ModelSerializer):
         delivery_fee = self.context['delivery_fee']
         user = self.context['request'].user
 
-        # Validate and apply bonus points
-        available_bonus_points = user.bonus
-        if bonus_points > available_bonus_points:
+        # Ensure the user has enough bonus points
+        if bonus_points > user.bonus:
             raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
 
-        # Calculate bonus discount
-        bonus_discount = Decimal(bonus_points)
+        # Calculate the monetary value of the bonus points
+        bonus_discount = Decimal(bonus_points) / 100  # Assume 1 point = 0.01 in currency value
+
+        logger.debug(f"User bonus points: {user.bonus}, Requested bonus points: {bonus_points}")
+        logger.debug(f"Bonus discount to apply: {bonus_discount}")
 
         with transaction.atomic():
             # Create the delivery instance
@@ -228,14 +234,20 @@ class OrderSerializer(serializers.ModelSerializer):
                 )
                 order_item.save()
                 total_amount += order_item.calculate_total_amount()
+                logger.debug(f"Added {order_item.calculate_total_amount()} to total amount. Current total: {total_amount}")
 
-            # Deduct bonus discount from total and save
+            # Deduct bonus discount from total amount
             final_total_amount = max(total_amount - bonus_discount, Decimal(0))
-            order.total_amount = final_total_amount
+            logger.debug(f"Final total amount after bonus deduction: {final_total_amount}")
 
-            # Deduct user bonus points
+            # Update the order's total amount and save it
+            order.total_amount = final_total_amount
+            order.save()
+
+            # Deduct user's bonus points if total amount calculation is successful
             user.bonus -= bonus_points
             user.save()
+            logger.debug(f"User bonus after deduction: {user.bonus}")
 
             # Apply promo code if available
             if promo_code_data:
