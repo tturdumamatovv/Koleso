@@ -169,6 +169,12 @@ class OrderDeliverySerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     products = ProductOrderItemSerializer(many=True, required=False)
+    restaurant_id = serializers.IntegerField(required=False, allow_null=True)
+    delivery = DeliverySerializer(required=False)
+    order_source = serializers.ChoiceField(choices=[('web', 'web'), ('mobile', 'mobile')], default='web')
+    change = serializers.IntegerField(default=0)
+    is_pickup = serializers.BooleanField(default=False)
+    promo_code = serializers.CharField(required=False, allow_blank=True)
     bonus_points = serializers.IntegerField(default=0, write_only=True)
 
     class Meta:
@@ -176,7 +182,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'delivery', 'order_time', 'total_amount', 'is_pickup',
             'order_status', 'products', 'payment_method', 'change', 'restaurant_id',
-            'order_source', 'comment', 'promo_code', 'bonus_points'
+            'order_source', 'comment', 'promo_code', 'bonus_points',
         ]
         read_only_fields = ['total_amount', 'order_time', 'order_status']
 
@@ -184,6 +190,7 @@ class OrderSerializer(serializers.ModelSerializer):
         bonus_points = validated_data.pop('bonus_points', 0)
         products_data = validated_data.pop('products', [])
         promo_code_data = validated_data.pop('promo_code', None)
+        delivery_data = validated_data.pop('delivery', {})
         nearest_restaurant = self.context['nearest_restaurant']
         delivery_fee = self.context['delivery_fee']
         user = self.context['request'].user
@@ -199,12 +206,20 @@ class OrderSerializer(serializers.ModelSerializer):
         logger.debug(f"Bonus discount to apply: {bonus_discount}")
 
         with transaction.atomic():
+            # Create the delivery instance
+            delivery = Delivery.objects.create(
+                restaurant=nearest_restaurant,
+                user_address=UserAddress.objects.get(id=delivery_data['user_address_id']) if delivery_data else None,
+                delivery_time=delivery_data.get('delivery_time'),
+                delivery_fee=delivery_fee
+            )
+
             # Initialize order total amount
-            total_amount = Decimal(delivery_fee)
+            total_amount = Decimal(0)
 
             # Create the order without setting total_amount yet
             order = Order.objects.create(
-                delivery=validated_data.get('delivery'),  # Use existing delivery handling
+                delivery=delivery,
                 restaurant=nearest_restaurant,
                 **validated_data
             )
@@ -212,7 +227,7 @@ class OrderSerializer(serializers.ModelSerializer):
             # Calculate total from products and create OrderItems linked to the order
             for product_data in products_data:
                 order_item = OrderItem(
-                    order=order,
+                    order=order,  # Associate each item with the order after creation
                     product_size_id=product_data['product_size_id'],
                     quantity=product_data['quantity'],
                     is_bonus=product_data['is_bonus']
@@ -244,7 +259,6 @@ class OrderSerializer(serializers.ModelSerializer):
             order.save()
 
         return order
-
 
 
 class ProductOrderItemPreviewSerializer(serializers.Serializer):
