@@ -196,10 +196,11 @@ class OrderSerializer(serializers.ModelSerializer):
         if bonus_points > available_bonus_points:
             raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
 
-        # Calculate discount
-        bonus_discount = Decimal(bonus_points) / 100  # Assuming each bonus point is worth 0.01 of currency
+        # Calculate bonus discount
+        bonus_discount = Decimal(bonus_points)  # Assuming each point is worth 0.01 in currency
 
         with transaction.atomic():
+            # Create the delivery instance
             delivery = Delivery.objects.create(
                 restaurant=nearest_restaurant,
                 user_address=UserAddress.objects.get(id=delivery_data['user_address_id']) if delivery_data else None,
@@ -207,14 +208,32 @@ class OrderSerializer(serializers.ModelSerializer):
                 delivery_fee=delivery_fee
             )
 
+            # Initialize order total amount
+            total_amount = Decimal(0)
+
+            # Calculate total from products
+            for product_data in products_data:
+                order_item = OrderItem(
+                    order=None,  # Temporarily set to None; will assign order after creation
+                    product_size_id=product_data['product_size_id'],
+                    quantity=product_data['quantity'],
+                    is_bonus=product_data['is_bonus']
+                )
+                order_item.save()
+                total_amount += order_item.calculate_total_amount()
+
+            # Deduct bonus discount from total
+            final_total_amount = max(total_amount - bonus_discount, Decimal(0))
+
+            # Create the order
             order = Order.objects.create(
                 delivery=delivery,
                 restaurant=nearest_restaurant,
+                total_amount=final_total_amount,  # Set total after discount
                 **validated_data
             )
 
-            # Calculate total amount based on products
-            total_amount = Decimal(0)
+            # Reassign items to the order
             for product_data in products_data:
                 order_item = OrderItem(
                     order=order,
@@ -223,14 +242,12 @@ class OrderSerializer(serializers.ModelSerializer):
                     is_bonus=product_data['is_bonus']
                 )
                 order_item.save()
-                total_amount += order_item.calculate_total_amount()
 
-            # Apply the bonus points discount
-            order.total_amount = max(total_amount - bonus_discount, Decimal(0))
-            user.bonus -= bonus_points  # Deduct the used bonus points
+            # Deduct bonus points from user
+            user.bonus -= bonus_points
             user.save()
 
-            # Handle promo code if provided
+            # Apply promo code if available
             if promo_code_data:
                 promo_code_instance = PromoCode.objects.filter(code=promo_code_data).first()
                 if not promo_code_instance or not promo_code_instance.is_valid():
