@@ -64,6 +64,7 @@ class OrderAdmin(ModelAdmin, ImportExportModelAdmin):
     readonly_fields = ('user', 'delivery', 'order_source', 'id',)
     inlines = [OrderItemInline]
     exclude = ('promo_code',)
+    list_per_page = 10
 
     def total_amount(self, obj):
         return obj.get_total_amount()
