@@ -147,6 +147,8 @@ class Order(models.Model):
                                 related_name='courier_orders', verbose_name=_('Курьер'))
     collector = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='collector_orders', verbose_name=_('Сборщик'))
+    partial_bonus_amount = models.DecimalField(max_digits=9, decimal_places=2, default=0,
+                                               verbose_name=_('Частичная оплата бонусами'))
     class Meta:
         verbose_name = _("Заказ")
         verbose_name_plural = _("Заказы")
@@ -183,6 +185,11 @@ class Order(models.Model):
 
         return total_bonus_amount
 
+    def calculate_total_after_bonus(self):
+        if self.partial_bonus_amount > self.total_amount:
+            raise ValueError("Bonus amount exceeds total order amount.")
+        return self.total_amount - self.partial_bonus_amount
+
     def save(self, *args, **kwargs):
         self.total_amount = self.apply_promo_code()
         super().save(*args, **kwargs)
@@ -206,7 +213,7 @@ class OrderItem(models.Model):
         verbose_name_plural = _("Элементы заказа")
 
     def __str__(self):
-        return f"{self.product_size.product.name if self.product_size else self.set.name} ({self.product_size.size.name if self.product_size else 'Сет'}) - {self.quantity} шт."
+        return f"{self.product_size.product.name if self.product_size else self.set.name} ({self.product_size.size if self.product_size else 'Сет'}) - {self.quantity} шт."
 
     def calculate_total_amount(self):
         if not self.is_bonus:

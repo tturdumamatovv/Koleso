@@ -162,25 +162,28 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if self.photo:
-            image = Image.open(self.photo)
+            try:
+                image = Image.open(self.photo)
 
-            max_width = 800
-            max_height = 800
+                max_width = 800
+                max_height = 800
 
-            original_width, original_height = image.size
-            ratio = min(max_width / original_width, max_height / original_height)
-            new_width = int(original_width * ratio)
-            new_height = int(original_height * ratio)
+                original_width, original_height = image.size
+                ratio = min(max_width / original_width, max_height / original_height)
+                new_width = int(original_width * ratio)
+                new_height = int(original_height * ratio)
 
-            resized_image = image.resize((new_width, new_height), Image.LANCZOS)
+                resized_image = image.resize((new_width, new_height), Image.LANCZOS)
 
-            image_io = BytesIO()
-            # Устанавливаем имя файла без добавления дополнительных путей
-            new_filename = f"{slugify(self.name)}_{self.pk}.webp"
-            resized_image.save(image_io, format='WEBP', quality=85)
+                image_io = BytesIO()
+                # Устанавливаем имя файла без добавления дополнительных путей
+                new_filename = f"{slugify(self.name)}_{self.pk}.webp"
+                resized_image.save(image_io, format='WEBP', quality=85)
 
-            # Сохраняем файл с корректным именем и без лишних путей
-            self.photo.save(new_filename, ContentFile(image_io.getvalue()), save=False)
+                # Сохраняем файл с корректным именем и без лишних путей
+                self.photo.save(new_filename, ContentFile(image_io.getvalue()), save=False)
+            except:
+                print("Except")
 
         super().save(*args, **kwargs)
 
