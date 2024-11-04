@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.renderers import JSONRenderer
+from rest_framework.permissions import IsAuthenticated
 
 from apps.authentication.models import UserAddress, BlacklistedAddress
 from apps.orders.models import (
@@ -572,3 +573,30 @@ class CollectorOrderHistoryView(generics.ListAPIView):
         print(f"Найдено заказов для сборщика: {queryset.count()}")
 
         return queryset
+
+
+class CancelOrderView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, *args, **kwargs):
+        # Retrieve the order ID from URL parameters
+        order_id = kwargs.get('pk')
+
+        # Retrieve the order, ensuring it belongs to the user
+        order = get_object_or_404(Order, pk=order_id, user=request.user)
+
+        # Check if the order status is "completed"
+        if order.order_status == 'completed':
+            return Response(
+                {'error': 'You cannot cancel an order that has been delivered.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update the order status to "cancelled"
+        order.order_status = 'cancelled'
+        order.save()
+
+        return Response(
+            {'status': 'success', 'message': 'Order has been cancelled.'},
+            status=status.HTTP_200_OK
+        )

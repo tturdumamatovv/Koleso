@@ -13,6 +13,7 @@ from .views import (
     CourierCompleteOrderView,
     CourierOrderHistoryView,
     CollectorOrderHistoryView,
+    CancelOrderView,
     get_user_orders,
     get_order_details
 
@@ -20,6 +21,7 @@ from .views import (
 
 urlpatterns = [
     path('create-order/', CreateOrderView.as_view(), name='create-order'),
+    path('orders/<int:pk>/cancel/', CancelOrderView.as_view(), name='cancel-order'),
     path('orders/', ListOrderView.as_view(), name='order-list'),
     path('order-preview/', OrderPreviewView.as_view(), name='order-preview'),
     path('reports/', ReportCreateView.as_view(), name='create-report'),
@@ -35,4 +37,3 @@ urlpatterns = [
     path('user/orders/', get_user_orders, name='user_orders'),
     path('details/', get_order_details, name='get_order_details'),
 ]
-
