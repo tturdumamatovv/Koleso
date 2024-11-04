@@ -111,7 +111,7 @@ class CreateOrderView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         user = request.user
         bonus_points_to_use = Decimal(request.data.get("bonus_points", 0))
-        total_bonus_available = Decimal(user.bonus_points)  # Assume user model has `bonus_points`
+        total_bonus_available = Decimal(user.bonus)  # Assume user model has `bonus_points`
 
         # Set up initial order data
         if request.data.get('delivery'):
