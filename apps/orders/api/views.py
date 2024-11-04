@@ -580,7 +580,6 @@ class CollectorOrderHistoryView(generics.ListAPIView):
 class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
-    # Define the queryset to retrieve only orders belonging to the authenticated user
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
 
@@ -597,11 +596,26 @@ class CancelOrderView(generics.UpdateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Update stock quantities for each order item
+        for order_item in order.order_items.all():
+            product_size = order_item.product_size
+            quantity_to_restore = order_item.quantity
+
+            # Adjust the stock in the Product model based on the unit
+            if product_size.unit == 'g':
+                product_size.product.quantity += quantity_to_restore / Decimal('1000')  # Grams to kg
+            elif product_size.unit == 'ml':
+                product_size.product.quantity += quantity_to_restore / Decimal('1000')  # Milliliters to liters
+            else:
+                product_size.product.quantity += quantity_to_restore  # Direct units or kg
+
+            product_size.product.save()
+
         # Update the order status to "cancelled"
         order.order_status = 'cancelled'
         order.save()
 
         return Response(
-            {'status': 'success', 'message': 'Order has been cancelled.'},
+            {'status': 'success', 'message': 'Order has been cancelled, and stock quantities have been restored.'},
             status=status.HTTP_200_OK
         )
