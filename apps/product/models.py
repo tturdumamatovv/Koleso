@@ -99,7 +99,7 @@ class ProductSize(models.Model):
         # Генерация строки размера с русскими обозначениями
         unit_mapping = dict(self.UNIT_CHOICES)  # Создаем отображение из choices
         self.size = f"{self.quantity} {unit_mapping[self.unit]}"  # Используем русское значение
-        print(f"Saving Product: {self.name}, Quantity: {self.quantity}")
+        print(f"Saving Product: {self.size}, Quantity: {self.quantity}")
         super().save(*args, **kwargs)
 
     def clean(self):
