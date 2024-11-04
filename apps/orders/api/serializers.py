@@ -186,17 +186,23 @@ class OrderSerializer(serializers.ModelSerializer):
         bonus_points = validated_data.pop('bonus_points', 0)
         products_data = validated_data.pop('products', [])
         promo_code_data = validated_data.pop('promo_code', None)
-
-        delivery_data = validated_data.get('delivery', {})
-        user_address = UserAddress.objects.get(id=delivery_data['user_address_id']) if delivery_data else None
-
+        delivery_data = validated_data.pop('delivery', {})
         nearest_restaurant = self.context['nearest_restaurant']
         delivery_fee = self.context['delivery_fee']
+        user = self.context['request'].user
+
+        # Validate and apply bonus points
+        available_bonus_points = user.bonus
+        if bonus_points > available_bonus_points:
+            raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
+
+        # Calculate discount
+        bonus_discount = Decimal(bonus_points) / 100  # Assuming each bonus point is worth 0.01 of currency
 
         with transaction.atomic():
             delivery = Delivery.objects.create(
                 restaurant=nearest_restaurant,
-                user_address=user_address,
+                user_address=UserAddress.objects.get(id=delivery_data['user_address_id']) if delivery_data else None,
                 delivery_time=delivery_data.get('delivery_time'),
                 delivery_fee=delivery_fee
             )
@@ -207,19 +213,8 @@ class OrderSerializer(serializers.ModelSerializer):
                 **validated_data
             )
 
-            if promo_code_data:
-                promo_code_instance = PromoCode.objects.filter(code=promo_code_data).first()
-                if not promo_code_instance or not promo_code_instance.is_valid():
-                    raise serializers.ValidationError({"promo_code": "Промокод недействителен или его срок истек."})
-                order.promo_code = promo_code_instance
-
-            user = self.context['request'].user
-            available_bonus_points = user.bonus
-            if bonus_points > available_bonus_points:
-                raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
-
-            # Calculate total amount
-            total_amount = delivery_fee
+            # Calculate total amount based on products
+            total_amount = Decimal(0)
             for product_data in products_data:
                 order_item = OrderItem(
                     order=order,
@@ -228,22 +223,19 @@ class OrderSerializer(serializers.ModelSerializer):
                     is_bonus=product_data['is_bonus']
                 )
                 order_item.save()
-
-                if product_data.get('topping_ids'):
-                    toppings = Topping.objects.filter(id__in=product_data['topping_ids'])
-                    order_item.topping.set(toppings)
-
-                # Accumulate the order item's total amount
                 total_amount += order_item.calculate_total_amount()
 
-            # Apply bonus discount to total amount
-            bonus_discount = Decimal(bonus_points)  # Adjust as needed (e.g., 0.01 per point)
-            final_amount = max(total_amount - bonus_discount, Decimal(0))
-            order.total_amount = final_amount
-
-            # Update user's bonus balance
-            user.bonus -= bonus_points
+            # Apply the bonus points discount
+            order.total_amount = max(total_amount - bonus_discount, Decimal(0))
+            user.bonus -= bonus_points  # Deduct the used bonus points
             user.save()
+
+            # Handle promo code if provided
+            if promo_code_data:
+                promo_code_instance = PromoCode.objects.filter(code=promo_code_data).first()
+                if not promo_code_instance or not promo_code_instance.is_valid():
+                    raise serializers.ValidationError({"promo_code": "Invalid or expired promo code."})
+                order.promo_code = promo_code_instance
 
             order.save()
 
