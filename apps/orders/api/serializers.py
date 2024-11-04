@@ -197,7 +197,7 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"bonus_points": "Insufficient bonus points."})
 
         # Calculate bonus discount
-        bonus_discount = Decimal(bonus_points)  # Assuming each point is worth 0.01 in currency
+        bonus_discount = Decimal(bonus_points)
 
         with transaction.atomic():
             # Create the delivery instance
@@ -211,10 +211,17 @@ class OrderSerializer(serializers.ModelSerializer):
             # Initialize order total amount
             total_amount = Decimal(0)
 
-            # Calculate total from products
+            # Create the order without setting total_amount yet
+            order = Order.objects.create(
+                delivery=delivery,
+                restaurant=nearest_restaurant,
+                **validated_data
+            )
+
+            # Calculate total from products and create OrderItems linked to the order
             for product_data in products_data:
                 order_item = OrderItem(
-                    order=None,  # Temporarily set to None; will assign order after creation
+                    order=order,  # Associate each item with the order after creation
                     product_size_id=product_data['product_size_id'],
                     quantity=product_data['quantity'],
                     is_bonus=product_data['is_bonus']
@@ -222,28 +229,11 @@ class OrderSerializer(serializers.ModelSerializer):
                 order_item.save()
                 total_amount += order_item.calculate_total_amount()
 
-            # Deduct bonus discount from total
+            # Deduct bonus discount from total and save
             final_total_amount = max(total_amount - bonus_discount, Decimal(0))
+            order.total_amount = final_total_amount
 
-            # Create the order
-            order = Order.objects.create(
-                delivery=delivery,
-                restaurant=nearest_restaurant,
-                total_amount=final_total_amount,  # Set total after discount
-                **validated_data
-            )
-
-            # Reassign items to the order
-            for product_data in products_data:
-                order_item = OrderItem(
-                    order=order,
-                    product_size_id=product_data['product_size_id'],
-                    quantity=product_data['quantity'],
-                    is_bonus=product_data['is_bonus']
-                )
-                order_item.save()
-
-            # Deduct bonus points from user
+            # Deduct user bonus points
             user.bonus -= bonus_points
             user.save()
 
