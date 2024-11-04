@@ -587,6 +587,15 @@ class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CancelOrderSerializer
 
+    # Define conversion rates to a base unit (e.g., kg for weight and l for volume)
+    UNIT_CONVERSIONS = {
+        'g': Decimal('0.001'),  # grams to kg
+        'kg': Decimal('1'),  # kg is base
+        'ml': Decimal('0.001'),  # ml to l
+        'l': Decimal('1'),  # l is base
+        'pcs': Decimal('1'),  # piece count is direct
+    }
+
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
 
@@ -610,20 +619,28 @@ class CancelOrderView(generics.UpdateAPIView):
         for order_item in order.order_items.all():
             product_size = order_item.product_size
             quantity_to_restore = Decimal(order_item.quantity)
+            unit = product_size.unit
 
             # Check that product_size and product are valid
             if not product_size or not product_size.product:
                 logger.error(f"Order item {order_item.id} does not have a valid product or product size.")
                 continue
 
-            # Add the quantity back to the product's stock
+            # Calculate restored quantity in base unit (e.g., kg for weight or l for volume)
+            conversion_rate = self.UNIT_CONVERSIONS.get(unit, Decimal('1'))
+            restored_quantity = quantity_to_restore * conversion_rate
+
+            # Add the restored quantity back to the product's stock
             product = product_size.product
             initial_quantity = Decimal(product.quantity)
-            product.quantity = initial_quantity + quantity_to_restore
+            product.quantity = initial_quantity + restored_quantity
             product.save()
 
             # Log to confirm the stock update
-            logger.info(f"Restored {quantity_to_restore} to {product.name} stock. New quantity: {product.quantity}")
+            logger.info(
+                f"Restored {quantity_to_restore} {unit} ({restored_quantity} base units) to {product.name}. "
+                f"New stock quantity: {product.quantity}"
+            )
 
         # Update order status to "cancelled" and save
         order.order_status = 'cancelled'
