@@ -109,6 +109,7 @@ class CreateOrderView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         user = request.user
+        bonus_points = request.data.get('bonus_points', 0)
         if request.data.get('delivery'):
             user_address_id = request.data.get('delivery').get('user_address_id') or None
         else:
@@ -170,6 +171,16 @@ class CreateOrderView(generics.CreateAPIView):
         # Подсчет общей суммы заказа
         total_amount = Decimal(0)
 
+        available_bonus_points = user.bonus  # Assuming `bonus_balance` field holds user's available points
+        if bonus_points > available_bonus_points:
+            return Response({"error": "Insufficient bonus points."}, status=status.HTTP_400_BAD_REQUEST)
+        bonus_discount = Decimal(bonus_points)  # Assuming each point is worth 0.01 of currency
+        total_amount -= bonus_discount  # Adjust total with bonus points
+
+        # Update user's bonus balance
+        user.bonus_balance -= bonus_points
+        user.save()
+
         for item in request.data.get('products', []):
             product_size_id = item.get('product_size_id')
             ordered_quantity = Decimal(item.get('quantity'))  # Преобразуем в Decimal
@@ -220,7 +231,9 @@ class CreateOrderView(generics.CreateAPIView):
         order.user = self.request.user
         order.comment = comment
         bonus_points = calculate_bonus_points(total_amount, Decimal(delivery_fee), order_source)
-        order.total_bonus_amount = bonus_points
+        order.total_amount = max(total_amount, Decimal(0))
+        order.total_bonus_amount = bonus_discount
+        order.save()
 
         try:
             total_order_amount = calculate_and_apply_bonus(order)

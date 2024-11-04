@@ -170,12 +170,14 @@ class OrderSerializer(serializers.ModelSerializer):
     change = serializers.IntegerField(default=0)
     is_pickup = serializers.BooleanField(default=False)
     promo_code = serializers.CharField(required=False, allow_blank=True)
+    bonus_points = serializers.IntegerField(default=0, write_only=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'delivery', 'order_time', 'total_amount', 'is_pickup',
-            'order_status', 'products', 'payment_method', 'change', 'restaurant_id', 'order_source', 'comment', 'promo_code'
+            'order_status', 'products', 'payment_method', 'change', 'restaurant_id',
+            'order_source', 'comment', 'promo_code', 'bonus_points',
             # 'sets',
         ]
         read_only_fields = ['total_amount', 'order_time', 'order_status']
