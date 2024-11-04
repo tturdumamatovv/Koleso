@@ -602,31 +602,15 @@ class CancelOrderView(generics.UpdateAPIView):
             product_size = order_item.product_size
             quantity_to_restore = Decimal(order_item.quantity)
 
-            print(
-                f"Restoring product: {product_size.product.name}, "
-                f"Unit: {product_size.unit}, Quantity Ordered: {quantity_to_restore}"
-            )
-
-            # Convert the quantity based on unit
-            if product_size.unit == 'g':
-                restored_quantity = quantity_to_restore / Decimal('1000')
-            elif product_size.unit == 'ml':
-                restored_quantity = quantity_to_restore / Decimal('1000')
-            else:
-                restored_quantity = quantity_to_restore
-
-            print(f"Restored Quantity to add: {restored_quantity}")
-
-            # Ensure restored_quantity is a Decimal and update the product quantity
-            product_quantity_before = Decimal(product_size.product.quantity)
-            product_size.product.quantity = product_quantity_before + restored_quantity
-            product_size.product.save()
+            # Directly add the quantity back to the product
+            product = product_size.product
+            product.quantity += quantity_to_restore
+            product.save()
 
             # Debug: Confirm the updated quantity is saved correctly
-            print(f"New Product Quantity for {product_size.product.name}: {product_size.product.quantity}")
-            if product_size.product.quantity != product_quantity_before + restored_quantity:
-                print("Error: Product quantity did not update as expected.")
+            print(f"Restored {quantity_to_restore} to {product.name}, New Quantity: {product.quantity}")
 
+        # Update the order status to "cancelled"
         order.order_status = 'cancelled'
         order.save()
 
