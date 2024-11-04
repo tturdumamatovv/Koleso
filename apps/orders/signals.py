@@ -30,10 +30,9 @@ def set_coordinates(sender, instance, **kwargs):
 @receiver(pre_save, sender=Order)
 def check_status_change(sender, instance, **kwargs):
     if instance.pk:
-        # Получаем старую версию заказа для проверки изменений
         old_order = sender.objects.get(pk=instance.pk)
 
-        # Проверяем, изменился ли статус заказа на 'completed' или 'ready'
+        # Проверка на изменения статуса на 'completed' или 'ready'
         if old_order.order_status != instance.order_status and instance.order_status in ['completed', 'ready']:
             print(f"Статус заказа {instance.id} изменился на '{instance.order_status}' — начисляем бонусы.")
 
@@ -49,23 +48,18 @@ def check_status_change(sender, instance, **kwargs):
             bonus_points = calculate_bonus_points(total_cash_payment, instance.delivery.delivery_fee,
                                                   instance.order_source)
 
-            # Логируем начисление бонусов
             print(f"Начисляем {bonus_points} бонусных баллов пользователю {instance.user.phone_number}.")
             apply_bonus_points(instance.user, bonus_points)
 
         # Проверка на отмену заказа администратором, когда статус меняется на "отменен"
         if old_order.order_status != instance.order_status and instance.order_status == 'cancelled':
             print(f"Статус заказа {instance.id} изменился на 'cancelled' — восстанавливаем запасы и бонусы.")
-            # Восстанавливаем запасы товаров и бонусы
             restore_stock_and_bonus(instance)
 
-        # Проверяем, существует ли пользователь и есть ли у него FCM токен
+        # Уведомление пользователя при изменении статуса заказа
         if instance.user and instance.user.fcm_token:
             try:
-                # Формируем текст уведомления
                 body = format_order_status_change_message(instance.order_time, instance.id, instance.order_status)
-
-                # Отправляем уведомление через Firebase
                 send_firebase_notification(
                     token=instance.user.fcm_token,
                     title="Изменение статуса заказа",

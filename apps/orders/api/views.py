@@ -558,14 +558,6 @@ class CancelOrderView(generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CancelOrderSerializer
 
-    UNIT_CONVERSIONS = {
-        'g': Decimal('0.001'),  # grams to kg
-        'kg': Decimal('1'),  # kg is base
-        'ml': Decimal('0.001'),  # ml to l
-        'l': Decimal('1'),  # l is base
-        'pcs': Decimal('1'),  # piece count is direct
-    }
-
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
 
@@ -585,43 +577,12 @@ class CancelOrderView(generics.UpdateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Restore stock quantities for each order item
-        for order_item in order.order_items.all():
-            product_size = order_item.product_size
-            ordered_quantity = Decimal(order_item.quantity)  # User-specified quantity
-            size_quantity = Decimal(product_size.quantity)  # Actual product size (e.g., 500g)
-
-            # Calculate the total quantity to restore in product units
-            actual_quantity_to_restore = ordered_quantity * size_quantity
-            unit = product_size.unit
-
-            # Check that product_size and product are valid
-            if not product_size or not product_size.product:
-                logger.error(f"Order item {order_item.id} does not have a valid product or product size.")
-                continue
-
-            # Convert to base units (e.g., kg or l) for storage in product quantity
-            conversion_rate = self.UNIT_CONVERSIONS.get(unit, Decimal('1'))
-            restored_quantity = actual_quantity_to_restore * conversion_rate
-
-            # Add the restored quantity back to the product's stock
-            product = product_size.product
-            initial_quantity = Decimal(product.quantity)
-            product.quantity = initial_quantity + restored_quantity
-            product.save()
-
-            # Log to confirm the stock update
-            logger.info(
-                f"Restored {actual_quantity_to_restore} {unit} ({restored_quantity} base units) to {product.name}. "
-                f"New stock quantity: {product.quantity}"
-            )
-
-        # Обновляем статус заказа на "отменен" и сохраняем
+        # Обновляем статус заказа на "отменен" и сохраняем, восстановление будет обрабатываться в сигналах
         order.order_status = 'cancelled'
         order.save()
         logger.info(f"Order #{order.id} status updated to 'cancelled'.")
 
         return Response(
-            {'status': 'success', 'message': 'Order has been cancelled, stock quantities have been restored.'},
+            {'status': 'success', 'message': 'Order has been cancelled, stock quantities and bonus points will be restored.'},
             status=status.HTTP_200_OK
         )

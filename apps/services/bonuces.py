@@ -34,9 +34,15 @@ def apply_bonus_points(user, bonus_points):
 
 
 def restore_stock_and_bonus(order):
-    from apps.orders.api.views import CancelOrderView
     """Восстанавливает запасы и возвращает бонусы при отмене заказа."""
-    # Восстанавливаем запасы для всех позиций заказа
+    UNIT_CONVERSIONS = {
+        'g': Decimal('0.001'),  # граммы в килограммы
+        'kg': Decimal('1'),     # килограммы остаются без изменений
+        'ml': Decimal('0.001'), # миллилитры в литры
+        'l': Decimal('1'),      # литры остаются без изменений
+        'pcs': Decimal('1'),    # штучный товар без изменений
+    }
+
     for order_item in order.order_items.all():
         product_size = order_item.product_size
         if not product_size or not product_size.product:
@@ -47,13 +53,18 @@ def restore_stock_and_bonus(order):
         actual_quantity_to_restore = ordered_quantity * size_quantity
 
         unit = product_size.unit
-        conversion_rate = CancelOrderView.UNIT_CONVERSIONS.get(unit, Decimal('1'))
-        restored_quantity = actual_quantity_to_restore * conversion_rate
+        conversion_rate = UNIT_CONVERSIONS.get(unit, Decimal('1'))
 
-        # Добавляем восстановленное количество к запасу продукта
+        # Восстанавливаемое количество в базовых единицах
+        restored_quantity = actual_quantity_to_restore * conversion_rate
         product = product_size.product
         product.quantity += restored_quantity
         product.save()
+
+        logger.info(
+            f"Restored {actual_quantity_to_restore} {unit} ({restored_quantity} base units) to {product.name}. "
+            f"New stock quantity: {product.quantity}"
+        )
 
     # Восстанавливаем бонусные баллы, если они были использованы
     if order.partial_bonus_amount:
