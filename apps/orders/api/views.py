@@ -231,7 +231,7 @@ class CreateOrderView(generics.CreateAPIView):
         order = serializer.instance
         order.user = self.request.user
         order.comment = comment
-        order.total_amount = max(total_amount - bonus_discount, Decimal(0))  # Обновляем с учетом бонусной скидки
+        order.total_amount = total_amount - bonus_discount # Обновляем с учетом бонусной скидки
         order.total_bonus_amount = bonus_points  # Устанавливаем сумму использованных бонусов
         order.save()
 
