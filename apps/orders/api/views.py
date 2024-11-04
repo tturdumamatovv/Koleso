@@ -178,7 +178,7 @@ class CreateOrderView(generics.CreateAPIView):
         total_amount -= bonus_discount  # Adjust total with bonus points
 
         # Update user's bonus balance
-        user.bonus_balance -= bonus_points
+        user.bonus -= bonus_points
         user.save()
 
         for item in request.data.get('products', []):
