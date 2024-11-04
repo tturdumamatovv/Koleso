@@ -174,8 +174,7 @@ class CreateOrderView(generics.CreateAPIView):
         available_bonus_points = user.bonus  # Assuming `bonus_balance` field holds user's available points
         if bonus_points > available_bonus_points:
             return Response({"error": "Insufficient bonus points."}, status=status.HTTP_400_BAD_REQUEST)
-        bonus_discount = Decimal(bonus_points)  # Assuming each point is worth 0.01 of currency
-        total_amount -= bonus_discount  # Adjust total with bonus points
+        bonus_discount = Decimal(bonus_points) / 100  # Assume 1 point = 0.01 in currency value
 
         # Update user's bonus balance
         user.bonus -= bonus_points
@@ -192,13 +191,15 @@ class CreateOrderView(generics.CreateAPIView):
 
                 # Конвертация заказа в килограммы для корректного вычитания
                 if product_size.unit == 'g':
-                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal('1000')  # 500 г = 0.5 кг
+                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal(
+                        '1000')  # 500 г = 0.5 кг
                     print(f"Product Size Unit: grams, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'kg':
                     quantity_in_kg = product_size.quantity * Decimal(ordered_quantity)  # Прямо в кг
                     print(f"Product Size Unit: kg, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'ml':
-                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal('1000')  # 500 мл = 0.5 кг (для жидкостей)
+                    quantity_in_kg = product_size.quantity * Decimal(ordered_quantity) / Decimal(
+                        '1000')  # 500 мл = 0.5 кг (для жидкостей)
                     print(f"Product Size Unit: ml, Quantity in kg: {quantity_in_kg}")
                 elif product_size.unit == 'l':
                     quantity_in_kg = Decimal(ordered_quantity)  # Прямо в кг
@@ -230,16 +231,14 @@ class CreateOrderView(generics.CreateAPIView):
         order = serializer.instance
         order.user = self.request.user
         order.comment = comment
-        bonus_points = calculate_bonus_points(total_amount, Decimal(delivery_fee), order_source)
-        order.total_amount = max(total_amount, Decimal(0))
-        order.total_bonus_amount = bonus_discount
+        order.total_amount = max(total_amount - bonus_discount, Decimal(0))  # Обновляем с учетом бонусной скидки
+        order.total_bonus_amount = bonus_points  # Устанавливаем сумму использованных бонусов
         order.save()
 
         try:
             total_order_amount = calculate_and_apply_bonus(order)
             order.total_amount = total_order_amount + delivery_fee
             order.promo_code = PromoCode.objects.filter(code=promo_code).first() if promo_code else None
-
             order.save()
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

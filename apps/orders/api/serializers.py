@@ -242,7 +242,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
             # Update the order's total amount and save it
             order.total_amount = final_total_amount
-            order.total_bonus_amount = bonus_discount
             order.save()
 
             # Deduct user's bonus points if total amount calculation is successful
