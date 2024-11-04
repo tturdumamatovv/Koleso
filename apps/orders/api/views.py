@@ -111,6 +111,8 @@ class CreateOrderView(generics.CreateAPIView):
         user = request.user
         partial_bonus_amount = Decimal(request.data.get('partial_bonus_amount', '0'))
 
+        user.bonus = user.bonus or Decimal('0')
+
         # Проверка на достаточное количество бонусов
         if partial_bonus_amount > user.bonus:
             return Response({"error": "Недостаточно бонусов для оплаты."},
@@ -615,12 +617,22 @@ class CancelOrderView(generics.UpdateAPIView):
                 f"New stock quantity: {product.quantity}"
             )
 
+        # Возвращаем бонусные баллы пользователю, если они были списаны
+        if order.partial_bonus_amount:
+            user = order.user
+            user.bonus += order.partial_bonus_amount
+            user.save()
+            logger.info(
+                f"Returned {order.partial_bonus_amount} bonus points to user {user.phone_number}. "
+                f"New bonus balance: {user.bonus}"
+            )
+
         # Update order status to "cancelled" and save
         order.order_status = 'cancelled'
         order.save()
         logger.info(f"Order #{order.id} status updated to 'cancelled'.")
 
         return Response(
-            {'status': 'success', 'message': 'Order has been cancelled, and stock quantities have been restored.'},
+            {'status': 'success', 'message': 'Order has been cancelled, stock quantities and bonus points have been restored.'},
             status=status.HTTP_200_OK
         )

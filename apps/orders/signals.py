@@ -7,10 +7,11 @@ from django.dispatch import receiver
 
 from apps.services.get_coordinates import get_coordinates
 from .models import Restaurant, Order
-from ..services.bonuces import apply_bonus_points
 from apps.services.generate_message import format_order_status_change_message
 from apps.services.firebase_notification import send_firebase_notification
 from apps.authentication.models import User
+
+from ..services.bonuces import apply_bonus_points, calculate_bonus_points, restore_stock_and_bonus
 
 from decouple import config
 
@@ -32,17 +33,31 @@ def check_status_change(sender, instance, **kwargs):
         # Получаем старую версию заказа для проверки изменений
         old_order = sender.objects.get(pk=instance.pk)
 
-        # Проверяем, изменился ли статус заказа на 'completed'
-        if old_order.order_status != instance.order_status and instance.order_status == 'completed':
-            # Обновляем время доставки и последнее время заказа пользователя
-            instance.delivery.delivery_time = datetime.now()
-            instance.delivery.save()
+        # Проверяем, изменился ли статус заказа на 'completed' или 'ready'
+        if old_order.order_status != instance.order_status and instance.order_status in ['completed', 'ready']:
+            print(f"Статус заказа {instance.id} изменился на '{instance.order_status}' — начисляем бонусы.")
 
-            instance.user.last_order = datetime.now()
-            instance.user.save()
+            # Обновляем время доставки и последнее время заказа пользователя, если статус - completed
+            if instance.order_status == 'completed':
+                instance.delivery.delivery_time = datetime.now()
+                instance.delivery.save()
+                instance.user.last_order = datetime.now()
+                instance.user.save()
 
-            # Применяем бонусные баллы
-            apply_bonus_points(instance.user, instance.total_bonus_amount)
+            # Применяем бонусные баллы только на часть, не оплачиваемую бонусами
+            total_cash_payment = instance.total_amount - (instance.partial_bonus_amount or 0)
+            bonus_points = calculate_bonus_points(total_cash_payment, instance.delivery.delivery_fee,
+                                                  instance.order_source)
+
+            # Логируем начисление бонусов
+            print(f"Начисляем {bonus_points} бонусных баллов пользователю {instance.user.phone_number}.")
+            apply_bonus_points(instance.user, bonus_points)
+
+        # Проверка на отмену заказа администратором, когда статус меняется на "отменен"
+        if old_order.order_status != instance.order_status and instance.order_status == 'cancelled':
+            print(f"Статус заказа {instance.id} изменился на 'cancelled' — восстанавливаем запасы и бонусы.")
+            # Восстанавливаем запасы товаров и бонусы
+            restore_stock_and_bonus(instance)
 
         # Проверяем, существует ли пользователь и есть ли у него FCM токен
         if instance.user and instance.user.fcm_token:
@@ -56,10 +71,12 @@ def check_status_change(sender, instance, **kwargs):
                     title="Изменение статуса заказа",
                     body=body
                 )
+                print("Уведомление отправлено.")
             except Exception as e:
                 print(f"Ошибка при отправке уведомления: {e}")
         else:
-            print(f"Пользователь {instance.user.id if instance.user else 'не указан'} не имеет FCM токена для отправки уведомлений.")
+            print(
+                f"Пользователь {instance.user.id if instance.user else 'не указан'} не имеет FCM токена для отправки уведомлений.")
 
 
 @receiver(post_save, sender=Order)
