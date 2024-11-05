@@ -133,7 +133,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'in_progress': 'В процессе',
             'delivery': 'Доставка',
             'completed': 'Завершено',
-            'cancelled': 'Отменено'
+            'cancelled': 'Отменено',
+            'ready': 'Готово',
         }
         return status_map.get(obj.order_status, obj.order_status)  # Поле app_download_link было связано с моделью TelegramBotToken, которая была удалена
 

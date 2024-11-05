@@ -45,7 +45,7 @@ def check_status_change(sender, instance, **kwargs):
 
             # Применяем бонусные баллы только на часть, не оплачиваемую бонусами
             total_cash_payment = instance.total_amount - (instance.partial_bonus_amount or 0)
-            bonus_points = calculate_bonus_points(total_cash_payment, instance.delivery.delivery_fee,
+            bonus_points = calculate_bonus_points(total_cash_payment,
                                                   instance.order_source)
 
             print(f"Начисляем {bonus_points} бонусных баллов пользователю {instance.user.phone_number}.")
