@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.orders.api.views import payment_settings
 from apps.product.models import Category
 from apps.orders.models import PercentCashback
 from apps.pages.models import (
@@ -149,12 +150,15 @@ class ContactsSerializer(serializers.ModelSerializer):
     def get_cash_back(self, obj):
         percents = PercentCashback.objects.all().first()
         if not percents:
-            percents = PercentCashback.objects.create(mobile_percent=5, web_percent=3, min_order_price=1000, bonus_to_use=50)
+            percents = PercentCashback.objects.create(mobile_percent=5, web_percent=3, min_order_price=1000, bonus_to_use=50,
+                                                      payment_cash=True, payment_card=True)
         return {
             'web': percents.web_percent,
             'mobile': percents.mobile_percent,
             'min_order_price': percents.min_order_price,
-            'bonus_to_use': percents.bonus_to_use
+            'bonus_to_use': percents.bonus_to_use,
+            'payment_cash': percents.payment_cash,
+            'payment_card': percents.payment_card,
         }
 
 

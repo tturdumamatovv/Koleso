@@ -256,6 +256,8 @@ class PercentCashback(SingletonModel):
     web_percent = models.IntegerField(verbose_name=_("Процент за веб-сайт"))
     min_order_price = models.IntegerField(verbose_name=_("Минимальная сумма заказа"))
     bonus_to_use = models.IntegerField(verbose_name=_("Максимальный процент покрытия бонусами(%)"))
+    payment_cash = models.BooleanField(verbose_name=_("Оплата наличными"), default=True)
+    payment_card = models.BooleanField(verbose_name=_("Оплата онлайн"), default=True)
 
     def __str__(self):
         return f"Процент кэшбека № {self.id}"
