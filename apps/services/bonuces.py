@@ -7,14 +7,14 @@ from apps.orders.models import PercentCashback
 logger = logging.getLogger(__name__)
 
 
-def calculate_bonus_points(order_total, delivery_fee, order_source):
+def calculate_bonus_points(order_total, order_source):
     percents = PercentCashback.objects.all().first()
     if not percents:
         percents = PercentCashback.objects.create(mobile_percent=5, web_percent=3)
 
     BONUS_PERCENTAGE_MOBILE = percents.mobile_percent
     BONUS_PERCENTAGE_WEB = percents.web_percent
-    total_order_amount = order_total - delivery_fee
+    total_order_amount = order_total
     if order_source == 'mobile':
         bonus_percentage = BONUS_PERCENTAGE_MOBILE
     elif order_source == 'web':

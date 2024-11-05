@@ -220,7 +220,7 @@ class CreateOrderView(generics.CreateAPIView):
         try:
             # Перерасчет и применение бонусов
             total_order_amount = calculate_and_apply_bonus(order)
-            order.total_amount = total_order_amount
+            order.total_amount = total_order_amount + delivery_fee
             order.save()
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -165,13 +165,13 @@ class Order(models.Model):
         return self.total_amount
 
     def get_total_amount(self):
-        total_amount = self.delivery.delivery_fee
+        total_amount = 0
         for order_item in self.order_items.all():
             total_amount += order_item.total_amount
         return total_amount
 
     def get_total_amount_2(self):
-        total_amount = self.delivery.delivery_fee
+        total_amount = 0
         for order_item in self.order_items.all():
             total_amount += order_item.calculate_total_amount()
         return total_amount
