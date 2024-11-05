@@ -214,13 +214,13 @@ class CreateOrderView(generics.CreateAPIView):
         # Применение промокода, если имеется
         order.promo_code = PromoCode.objects.filter(code=promo_code).first() if promo_code else None
         order.comment = comment
-        bonus_points = calculate_bonus_points(order.total_amount, delivery_fee, order_source)
+        bonus_points = calculate_bonus_points(order.total_amount, order_source)
         order.total_bonus_amount = bonus_points
 
         try:
             # Перерасчет и применение бонусов
             total_order_amount = calculate_and_apply_bonus(order)
-            order.total_amount = total_order_amount + delivery_fee
+            order.total_amount = total_order_amount
             order.save()
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
