@@ -220,7 +220,7 @@ class CreateOrderView(generics.CreateAPIView):
         try:
             # Перерасчет и применение бонусов
             total_order_amount = calculate_and_apply_bonus(order)
-            order.total_amount = total_order_amount + delivery_fee
+            order.total_amount = total_order_amount
             order.save()
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -281,6 +281,9 @@ class CreateOrderView(generics.CreateAPIView):
         """Создает ссылку на оплату через FreedomPay."""
         url = f"{payment_settings.paybox_url}/init_payment.php"
         amount = order.calculate_total_after_bonus()
+        print(f"Сохранённое total_amount в заказе: {order.total_amount}")
+        print(f"Рассчитанное total_after_bonus: {order.calculate_total_after_bonus()}")
+
         order_id = order.id
         params = {
             'pg_merchant_id': payment_settings.merchant_id,
