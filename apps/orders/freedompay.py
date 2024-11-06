@@ -113,19 +113,26 @@ def cancel_freedompay_payment(order):
         'pg_payment_id': order.payment_id,
         'pg_salt': uuid.uuid4().hex,
     }
-    request_data['pg_sig'] = generate_signature(request_data, payment_settings.merchant_secret)
+    request_data['pg_sig'] = generate_signature(request_data, 'cancel.php')
 
     try:
         response = requests.post(url, data=request_data)
         response.raise_for_status()
-        response_data = response.json()
+
+        response_text = response.text
+        print("Response Text (Cancel):", response_text)
+
+        root = ET.fromstring(response_text)
+        response_data = {child.tag: child.text for child in root}
+
         if response_data.get('pg_status') == 'ok':
             print(f"Платеж для заказа {order.id} успешно отменен.")
             order.payment_status = 'failed'
             order.save()
             return 'success'
         else:
-            print(f"Ошибка при отмене платежа для заказа {order.id}")
+            error_description = response_data.get('pg_error_description', 'Неизвестная ошибка')
+            print(f"Ошибка при отмене платежа для заказа {order.id}: {error_description}")
             return 'error'
     except requests.RequestException as e:
         print(f"Ошибка запроса к FreedomPay: {e}")
