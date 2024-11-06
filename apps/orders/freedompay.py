@@ -113,7 +113,7 @@ def cancel_freedompay_payment(order):
         'pg_payment_id': order.payment_id,
         'pg_salt': uuid.uuid4().hex,
     }
-    request_data['pg_sig'] = generate_signature(request_data, payment_settings.secret_key)
+    request_data['pg_sig'] = generate_signature(request_data, payment_settings.merchant_secret)
 
     try:
         response = requests.post(url, data=request_data)
