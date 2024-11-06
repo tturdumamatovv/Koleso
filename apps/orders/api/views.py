@@ -1,3 +1,5 @@
+import uuid
+
 import requests
 import logging
 
@@ -26,6 +28,7 @@ from apps.services.bonuces import (
     calculate_bonus_points,
     apply_bonus_points
 )
+from apps.orders.celery import check_order_payment_status
 from apps.services.calculate_bonus import calculate_and_apply_bonus
 from apps.services.calculate_delivery_fee import calculate_delivery_fee
 from apps.services.calculate_distance import get_distance_between_locations
@@ -41,8 +44,9 @@ from .serializers import (
     OrderDeliverySerializer,
     CancelOrderSerializer
 )
-from ..freedompay import generate_signature
+from ..freedompay import generate_signature, send_post_request, check_freedompay_payment_status
 from ..permissions import IsCollector
+from ..utils import deduct_bonuses_and_inventory
 from ...product.models import ProductSize
 
 from apps.pages.models import PaymentSettings
@@ -115,6 +119,7 @@ class CreateOrderView(generics.CreateAPIView):
 
         # Проверка на достаточное количество бонусов
         if partial_bonus_amount > user.bonus:
+            print("Недостаточно бонусов для оплаты.")
             return Response({"error": "Недостаточно бонусов для оплаты."},
                             status=status.HTTP_400_BAD_REQUEST)
 
@@ -134,9 +139,11 @@ class CreateOrderView(generics.CreateAPIView):
             try:
                 user_address_instance = UserAddress.objects.get(id=user_address_id, user=user)
                 if BlacklistedAddress.objects.filter(address=user_address_instance).exists():
+                    print("Адрес в черном списке.")
                     return Response({"error": "Данный адрес находится в черном списке. Заказ нельзя оформить."},
                                     status=status.HTTP_400_BAD_REQUEST)
             except UserAddress.DoesNotExist:
+                print("Адрес пользователя не найден.")
                 return Response({"error": "Адрес пользователя не найден."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Определение координат и расчёт расстояния для доставки
@@ -151,6 +158,7 @@ class CreateOrderView(generics.CreateAPIView):
                 float('inf'), None, order_time, TelegramBotToken.objects.first(), user_location
             )
             if not nearest_restaurant:
+                print("Нет доступных ресторанов или все закрыты.")
                 return Response({"error": "Нет доступных ресторанов или все закрыты."},
                                 status=status.HTTP_400_BAD_REQUEST)
             delivery_fee = calculate_delivery_fee(min_distance)
@@ -159,11 +167,14 @@ class CreateOrderView(generics.CreateAPIView):
                 try:
                     nearest_restaurant = Restaurant.objects.get(id=restaurant_id)
                     if not is_restaurant_open(nearest_restaurant, order_time):
+                        print("Выбранный ресторан закрыт.")
                         return Response({"error": "Выбранный ресторан закрыт."},
                                         status=status.HTTP_400_BAD_REQUEST)
                 except Restaurant.DoesNotExist:
+                    print("Ресторан не найден.")
                     return Response({"error": "Ресторан не найден."}, status=status.HTTP_400_BAD_REQUEST)
             else:
+                print("ID ресторана требуется для самовывоза.")
                 return Response({"error": "ID ресторана требуется для самовывоза."},
                                 status=status.HTTP_400_BAD_REQUEST)
 
@@ -180,110 +191,39 @@ class CreateOrderView(generics.CreateAPIView):
         order.total_amount = order.calculate_total_after_bonus()
         order.save()
 
-        # Снижение бонусов у пользователя
-        user.bonus -= partial_bonus_amount
-        user.save()
-
         response_data = serializer.data
         response_data['total_after_bonus'] = str(order.total_amount)
 
-        # Подготовка продуктов и проверка доступности количества
-        for item in request.data.get('products', []):
-            product_size_id = item.get('product_size_id')
-            ordered_quantity = Decimal(item.get('quantity'))
-            try:
-                product_size = ProductSize.objects.get(id=product_size_id)
-                product = product_size.product
-
-                # Конвертация заказанного количества в кг, если требуется
-                quantity_in_kg = self.convert_quantity_to_kg(product_size, ordered_quantity)
-
-                # Проверка на наличие достаточного количества
-                if product.quantity < quantity_in_kg:
-                    return Response({"error": f"Недостаточно товара для {product.name}."},
-                                    status=status.HTTP_400_BAD_REQUEST)
-
-                # Уменьшение количества товара
-                product.quantity -= quantity_in_kg
-                product.save()
-
-            except ProductSize.DoesNotExist:
-                return Response({"error": f"Продукт с указанным размером не найден."},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        # Применение промокода, если имеется
-        order.promo_code = PromoCode.objects.filter(code=promo_code).first() if promo_code else None
-        order.comment = comment
-        bonus_points = calculate_bonus_points(order.total_amount, order_source)
-        order.total_bonus_amount = bonus_points
-
-        try:
-            # Перерасчет и применение бонусов
-            total_order_amount = calculate_and_apply_bonus(order)
-            order.total_amount = total_order_amount
-            order.save()
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Генерация и отправка сообщения о заказе
-        message = generate_order_message(order, min_distance, delivery_fee)
-        order.delivery.distance_km = min_distance
-        order.delivery.save()
-        bot_token_instance = TelegramBotToken.objects.first()
-        if bot_token_instance:
-            self.send_order(bot_token_instance, message, nearest_restaurant)
-
         # Обработка оплаты, если метод "карта"
-        response_data = serializer.data
         if payment_method == "card":
+            print("Инициация оплаты через FreedomPay...")
             payment_url = self.create_freedompay_payment(order, user.email, user.phone_number,
                                                          PaymentSettings.objects.first())
             if not payment_url:
+                print("Ошибка создания ссылки на оплату.")
                 return Response({"error": "Ошибка создания ссылки на оплату."},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             response_data['freedompay_url'] = payment_url
 
+            # Не списываем бонусы и не уменьшаем количество, а ждём подтверждения
+            order.payment_status = 'pending'
+            order.save()
+            check_order_payment_status.apply_async(args=[order.id])
+            print(f"Создан заказ с ID {order.id}, статус оплаты: {order.payment_status}")
+            payment_status = check_freedompay_payment_status(order, deduct_bonuses_and_inventory)
+            print(f"Результат ручной проверки статуса оплаты: {payment_status}")
+        else:
+            # Если оплата наличными, сразу списываем бонусы
+            print("Оплата наличными, списание бонусов и товаров...")
+            deduct_bonuses_and_inventory(order)  # Вызов из utils.py
+
         headers = self.get_success_headers(serializer.data)
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def convert_quantity_to_kg(self, product_size, ordered_quantity):
-        """Конвертирует количество продукта в килограммы, если это необходимо."""
-        if product_size.unit == 'g':
-            return product_size.quantity * ordered_quantity / Decimal('1000')
-        elif product_size.unit == 'kg':
-            return product_size.quantity * ordered_quantity
-        elif product_size.unit == 'ml':
-            return product_size.quantity * ordered_quantity / Decimal('1000')
-        elif product_size.unit == 'l':
-            return ordered_quantity
-        else:
-            return ordered_quantity
-
-    def send_order(self, bot_token_instance, message, nearest_restaurant):
-        telegram_bot_token = bot_token_instance.bot_token
-        telegram_chat_ids = nearest_restaurant.get_telegram_chat_ids()
-        for chat_id in telegram_chat_ids:
-            if chat_id:
-                send_telegram_message(telegram_bot_token, chat_id, message)
-
-    def get_nearest_restaurant(self, min_distance, nearest_restaurant, order_time, token, user_location):
-        """Находит ближайший открытый ресторан."""
-        for restaurant in Restaurant.objects.all():
-            if restaurant.latitude and restaurant.longitude:
-                restaurant_location = (restaurant.latitude, restaurant.longitude)
-                distance = get_distance_between_locations(token.google_map_api_key, user_location, restaurant_location)
-                if distance is not None and distance < min_distance and is_restaurant_open(restaurant, order_time):
-                    min_distance = distance
-                    nearest_restaurant = restaurant
-        return min_distance, nearest_restaurant
 
     def create_freedompay_payment(self, order, email, phone_number, payment_settings):
         """Создает ссылку на оплату через FreedomPay."""
         url = f"{payment_settings.paybox_url}/init_payment.php"
         amount = order.calculate_total_after_bonus()
-        print(f"Сохранённое total_amount в заказе: {order.total_amount}")
-        print(f"Рассчитанное total_after_bonus: {order.calculate_total_after_bonus()}")
-
         order_id = order.id
         params = {
             'pg_merchant_id': payment_settings.merchant_id,
@@ -308,10 +248,25 @@ class CreateOrderView(generics.CreateAPIView):
             response_text = response.text
             root = ET.fromstring(response_text)
             payment_url = root.find('pg_redirect_url')
+            pg_payment_id = root.find('pg_payment_id').text if root.find('pg_payment_id') is not None else None
+            order.payment_id = pg_payment_id
+            order.save()
+            print(f"Создан платеж с ID {pg_payment_id} для заказа {order.id}")
             return payment_url.text if payment_url is not None else None
         except (ET.ParseError, requests.RequestException) as e:
             print(f"Error during request to Paybox: {e}")
             return None
+
+    def get_nearest_restaurant(self, min_distance, nearest_restaurant, order_time, token, user_location):
+        """Находит ближайший открытый ресторан."""
+        for restaurant in Restaurant.objects.all():
+            if restaurant.latitude and restaurant.longitude:
+                restaurant_location = (restaurant.latitude, restaurant.longitude)
+                distance = get_distance_between_locations(token.google_map_api_key, user_location, restaurant_location)
+                if distance is not None and distance < min_distance and is_restaurant_open(restaurant, order_time):
+                    min_distance = distance
+                    nearest_restaurant = restaurant
+        return min_distance, nearest_restaurant
 
 
 class OrderPreviewView(generics.GenericAPIView):

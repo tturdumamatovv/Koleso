@@ -14,6 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 cred = credentials.Certificate(os.path.join(BASE_DIR, 'koleso-1bdb1-firebase-adminsdk-ajcto-ce8c70762a.json'))
 firebase_admin.initialize_app(cred)
 
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 SECRET_KEY = config('SECRET_KEY')
 

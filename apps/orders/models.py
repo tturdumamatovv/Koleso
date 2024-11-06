@@ -1,3 +1,6 @@
+import random
+import string
+
 from decimal import Decimal
 
 from django.db import models
@@ -9,8 +12,6 @@ from django.core.validators import MinLengthValidator
 from apps.authentication.models import UserAddress, User
 from apps.pages.models import SingletonModel
 from apps.product.models import ProductSize, Topping  # Set,Ingredient
-import random
-import string
 
 
 class WhatsAppChat(SingletonModel):
@@ -149,6 +150,17 @@ class Order(models.Model):
                                 related_name='collector_orders', verbose_name=_('Сборщик'))
     partial_bonus_amount = models.DecimalField(max_digits=9, decimal_places=2, default=0,
                                                verbose_name=_('Частичная оплата бонусами'))
+    payment_id = models.CharField(max_length=255, blank=True, null=True)
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending',
+    )
     class Meta:
         verbose_name = _("Заказ")
         verbose_name_plural = _("Заказы")
