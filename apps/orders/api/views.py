@@ -223,7 +223,7 @@ class CreateOrderView(generics.CreateAPIView):
     def create_freedompay_payment(self, order, email, phone_number, payment_settings):
         """Создает ссылку на оплату через FreedomPay."""
         url = f"{payment_settings.paybox_url}/init_payment.php"
-        amount = order.calculate_total_after_bonus()
+        amount = order.total_amount
         order_id = order.id
         params = {
             'pg_merchant_id': payment_settings.merchant_id,
