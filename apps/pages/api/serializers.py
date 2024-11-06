@@ -151,7 +151,7 @@ class ContactsSerializer(serializers.ModelSerializer):
         percents = PercentCashback.objects.all().first()
         if not percents:
             percents = PercentCashback.objects.create(mobile_percent=5, web_percent=3, min_order_price=1000, bonus_to_use=50,
-                                                      payment_cash=True, payment_card=True)
+                                                      payment_cash=True, payment_card=True, delivery=True, pick_up=True)
         return {
             'web': percents.web_percent,
             'mobile': percents.mobile_percent,
@@ -159,6 +159,8 @@ class ContactsSerializer(serializers.ModelSerializer):
             'bonus_to_use': percents.bonus_to_use,
             'payment_cash': percents.payment_cash,
             'payment_card': percents.payment_card,
+            'delivery': percents.delivery,
+            'pick_up': percents.pick_up
         }
 
 
