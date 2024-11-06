@@ -152,9 +152,9 @@ class Order(models.Model):
                                                verbose_name=_('Частичная оплата бонусами'))
     payment_id = models.CharField(max_length=255, blank=True, null=True)
     PAYMENT_STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
+        ('pending', 'В ожидании'),
+        ('completed', 'Оплачено'),
+        ('failed', 'Отклонено'),
     ]
     payment_status = models.CharField(
         max_length=10,
