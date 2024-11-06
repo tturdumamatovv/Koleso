@@ -66,7 +66,7 @@ class OrderAdmin(ModelAdmin, ImportExportModelAdmin):
     list_editable = ('order_status',)
     readonly_fields = ('user', 'delivery', 'order_source', 'id',)
     inlines = [OrderItemInline]
-    exclude = ('promo_code',)
+    exclude = ('promo_code', 'payment_id')
     list_per_page = 10
 
     def total_amount(self, obj):

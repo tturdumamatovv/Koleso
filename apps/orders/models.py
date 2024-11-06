@@ -160,6 +160,7 @@ class Order(models.Model):
         max_length=10,
         choices=PAYMENT_STATUS_CHOICES,
         default='pending',
+        verbose_name=_("Статус Оплаты")
     )
     class Meta:
         verbose_name = _("Заказ")
