@@ -8,7 +8,7 @@ from .utils import deduct_bonuses_and_inventory
 from celery.exceptions import MaxRetriesExceededError
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=20)
 def check_order_payment_status(self, order_id):
     try:
         order = Order.objects.get(id=order_id)
@@ -17,7 +17,7 @@ def check_order_payment_status(self, order_id):
             print(f"Результат проверки статуса для заказа {order.id}: {status}")
 
             if status == 'pending':
-                raise self.retry(countdown=5)
+                raise self.retry(countdown=15)
             elif status == 'success':
                 print(f"Заказ {order.id} успешно оплачен")
             else:
