@@ -401,7 +401,14 @@ class CollectorOrderListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Получаем заказы для сборщика
-        return Order.objects.filter(order_status__in=['pending', 'in_progress']).order_by('-order_time')
+        orders = Order.objects.filter(order_status__in=['pending', 'in_progress']).order_by('-order_time')
+
+        for order in orders:
+            if order.payment_method == 'card' and order.payment_status != 'completed':
+                # Если метод оплаты 'карта' и статус не 'completed', исключаем заказ
+                orders = orders.exclude(id=order.id)
+
+        return orders
 
 
 class CollectorOrderUpdateView(generics.UpdateAPIView):

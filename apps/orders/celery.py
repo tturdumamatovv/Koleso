@@ -1,5 +1,3 @@
-import time
-
 from celery import shared_task
 from .models import Order  # Предполагается, что ваша модель называется Order
 from apps.orders.freedompay import check_freedompay_payment_status, cancel_freedompay_payment
