@@ -60,9 +60,19 @@ class Category(MPTTModel):
             raise ValidationError(_('Категория не может быть вложена глубже, чем на 3 уровня (category → subcategory → subsubcategory).'))
 
     def save(self, *args, **kwargs):
+        # Генерация slug только если он не задан
         if not self.slug:
-            self.slug = slugify(unidecode(self.name))
-        self.clean()
+            base_slug = slugify(unidecode(self.name))
+            slug = base_slug
+            counter = 1
+
+            # Проверка на уникальность slug
+            while Category.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            self.slug = slug
+            self.clean()
         super().save(*args, **kwargs)
 
 
