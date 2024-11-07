@@ -236,7 +236,7 @@ class CreateOrderView(generics.CreateAPIView):
             'pg_result_url': 'https://koleso.kg/',
             'pg_success_url': 'https://koleso.kg/success/',
             'pg_failure_url': 'https://koleso.kg/failure/',
-            'pg_testing_mode': 2,
+            'pg_testing_mode': 0,
             'pg_salt': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
 
