@@ -44,6 +44,7 @@ class ProductSizeInline(TabularInline):
 class CategoryAdmin(ModelAdmin, DraggableMPTTAdmin, ExcludeBaseFieldsMixin, TabbedTranslationAdmin):
     search_fields = ('name',)
     exclude_base_fields = ('name', 'description')
+    readonly_fields = ['slug']
     def indented_title(self, obj):
         return format_html(
             '<div style="text-indent:{}px;">{}</div>',
