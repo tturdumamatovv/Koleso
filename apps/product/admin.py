@@ -41,7 +41,7 @@ class ProductSizeInline(TabularInline):
 
 
 @admin.register(Category)
-class CategoryAdmin(ModelAdmin, DraggableMPTTAdmin, ExcludeBaseFieldsMixin, TabbedTranslationAdmin):
+class CategoryAdmin(ModelAdmin, DraggableMPTTAdmin, TabbedTranslationAdmin):
     search_fields = ('name',)
     exclude_base_fields = ('name', 'description')
     readonly_fields = ['slug']
