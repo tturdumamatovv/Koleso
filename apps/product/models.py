@@ -43,6 +43,9 @@ class Category(MPTTModel):
     order = models.PositiveIntegerField(default=0, editable=False, db_index=True)
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
 
+    class MPTTMeta:
+        order_insertion_by = ['name']
+
     class Meta:
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
