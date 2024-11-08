@@ -53,7 +53,7 @@ class CategoryAdmin(ModelAdmin, DraggableMPTTAdmin, TabbedTranslationAdmin):
         )
     indented_title.short_description = 'Название'
 
-    list_display = ('tree_actions', 'indented_title',)
+    list_display = ('tree_actions', 'indented_title', 'order')
     mptt_level_indent = 20
 
 @admin.register(Product)
