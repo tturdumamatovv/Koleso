@@ -2,6 +2,9 @@
 from decimal import Decimal
 from .models import ProductSize
 
+from rest_framework.response import Response
+from rest_framework import status
+
 def convert_quantity_to_kg(product_size, ordered_quantity):
     """Конвертирует количество продукта в килограммы, если это необходимо."""
     if product_size.unit == 'g':
@@ -35,7 +38,8 @@ def deduct_bonuses_and_inventory(order):
 
             # Проверка на наличие достаточного количества
             if product.quantity < quantity_in_kg:
-                raise ValueError(f"Недостаточно товара для {product.name}.")
+                return Response({"error": f"Недостаточно товара для {product.name}."},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             # Уменьшение количества товара
             product.quantity -= quantity_in_kg
