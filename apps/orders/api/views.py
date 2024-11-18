@@ -46,7 +46,7 @@ from .serializers import (
 )
 from ..freedompay import generate_signature, send_post_request, check_freedompay_payment_status
 from ..permissions import IsCollector
-from ..utils import deduct_bonuses_and_inventory
+from ..utils import deduct_bonuses_and_inventory, convert_quantity_to_kg
 from ...product.models import ProductSize
 
 from apps.pages.models import PaymentSettings
@@ -177,6 +177,21 @@ class CreateOrderView(generics.CreateAPIView):
                 print("ID ресторана требуется для самовывоза.")
                 return Response({"error": "ID ресторана требуется для самовывоза."},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+        products_data = request.data.get('products', [])
+        for product_data in products_data:
+            product_size = ProductSize.objects.get(id=product_data['product_size_id'])
+            product = product_size.product
+            ordered_quantity = product_data['quantity']
+
+            # Конвертация количества в кг, если необходимо
+            quantity_in_kg = convert_quantity_to_kg(product_size, ordered_quantity)
+
+            # Если заказанное количество превышает доступное, выбрасываем ошибку
+            if product.quantity < quantity_in_kg:
+                return Response(
+                    {"error": f"Недостаточно товара для {product.name}. Текущий остаток: {product.quantity}"},
+                    status=status.HTTP_400_BAD_REQUEST)
 
         # Создание сериализатора с полным контекстом
         serializer = self.get_serializer(
