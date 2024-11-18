@@ -189,8 +189,9 @@ class CreateOrderView(generics.CreateAPIView):
 
             # Если заказанное количество превышает доступное, выбрасываем ошибку
             if product.quantity < quantity_in_kg:
+                unit_in_russian = product_size.get_unit_in_russian()
                 return Response(
-                    {"error": f"Недостаточно товара для {product.name}. Текущий остаток: {product.quantity} {product.get_unit_in_russian()}"},
+                    {"error": f"Недостаточно товара для {product.name}. Текущий остаток: {product.quantity} {unit_in_russian}"},
                     status=status.HTTP_400_BAD_REQUEST)
 
         # Создание сериализатора с полным контекстом
