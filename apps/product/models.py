@@ -123,6 +123,11 @@ class ProductSize(models.Model):
         if self.unit in ['kg', 'g'] and self.product.unit in ['l', 'ml']:
             raise ValidationError(_('Нельзя выбрать килограммы или граммы для продукта, который измеряется в литрах.'))
 
+    def get_unit_in_russian(self):
+        """Возвращает единицу измерения на русском языке."""
+        unit_mapping = dict(self.UNIT_CHOICES)
+        return unit_mapping.get(self.unit, self.unit)
+
 
 class Product(models.Model):
     is_popular = models.BooleanField(default=False, verbose_name=_('Популярный'))
