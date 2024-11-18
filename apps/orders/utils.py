@@ -37,7 +37,7 @@ def deduct_bonuses_and_inventory(order):
 
             # Проверка на наличие достаточного количества
             if product.quantity < quantity_in_kg:
-                raise ValidationError(f"Недостаточно товара для {product.name}. Текущий остаток: {product.quantity}")
+                raise ValidationError(f"Недостаточно товара для {product.name}. Текущий остаток: {product.quantity} {product.unit}")
 
             # Уменьшение количества товара
             product.quantity -= quantity_in_kg
