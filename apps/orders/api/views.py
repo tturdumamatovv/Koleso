@@ -215,7 +215,9 @@ class CreateOrderView(generics.CreateAPIView):
         else:
             # Если оплата наличными, сразу списываем бонусы
             print("Оплата наличными, списание бонусов и товаров...")
-            deduct_bonuses_and_inventory(order)  # Вызов из utils.py
+            response = deduct_bonuses_and_inventory(order)
+            if isinstance(response, Response):
+                return response
 
         headers = self.get_success_headers(serializer.data)
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
